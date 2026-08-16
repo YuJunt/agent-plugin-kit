@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20, 22]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Syntax check all scripts
+        run: |
+          for f in scripts/*.js scripts/lib/*.js scripts/bin/*.js test/*.js; do
+            node --check "$f"
+          done
+
+      - name: Run test suite (behavior + contract)
+        run: npm test
+
+      - name: Validate example plugins
+        run: |
+          for p in examples/hello-plugin examples/code-review-assistant examples/git-release-notes; do
+            node scripts/validate.js "$p" --json | grep -q '"valid": true'
+          done
+
+      - name: Verify packaging round-trip
+        run: |
+          node scripts/pack.js examples/git-release-notes --verify -o /tmp/ci-pack
+          node scripts/pack.js examples/code-review-assistant --verify -o /tmp/ci-pack

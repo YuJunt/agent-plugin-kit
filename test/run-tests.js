@@ -111,6 +111,70 @@ assert('pack exits 0', packRes.status === 0 && packRes.data && packRes.data.pack
 const archive = path.join(packDir, 'my-plugin-0.1.0.tgz')
 assert('archive created', fs.existsSync(archive))
 
+const dryRes = jsonExit(run('pack.js', [createdRoot, '--dry-run']))
+assert('dry-run lists files without archive', dryRes.status === 0 && dryRes.data && dryRes.data.dryRun === true && Array.isArray(dryRes.data.files) && dryRes.data.files.includes('plugin.json'))
+
+const verifyPackDir = path.join(TMP, 'dist-verify')
+const verifyRes = jsonExit(run('pack.js', [createdRoot, '--verify', '-o', verifyPackDir]))
+assert('pack --verify round-trip valid', verifyRes.status === 0 && verifyRes.data.verify && verifyRes.data.verify.valid === true)
+
+const excludeRes = jsonExit(run('pack.js', [path.join(ROOT, 'examples', 'code-review-assistant'), '--dry-run', '--exclude', 'server.js']))
+assert('exclude filter removes files', excludeRes.data && excludeRes.data.files && !excludeRes.data.files.includes('server.js') && excludeRes.data.files.includes('plugin.json'))
+
+console.log('mcp transports')
+const httpRoot = path.join(TMP, 'http-plugin')
+fs.mkdirSync(httpRoot, { recursive: true })
+const httpCreate = jsonExit(run('create.js', ['http-plugin', '--mcp', '--mcp-type', 'streamable-http', '--mcp-url', 'https://example.com/mcp', '-d', path.join(TMP, 'http-parent')]))
+const httpCreatedRoot = path.join(TMP, 'http-parent', 'http-plugin')
+assert('create streamable-http plugin', httpCreate.status === 0 && fs.existsSync(path.join(httpCreatedRoot, 'mcp.json')) && !fs.existsSync(path.join(httpCreatedRoot, 'server.js')))
+const httpValid = jsonExit(run('validate.js', [httpCreatedRoot, '--json']))
+assert('streamable-http plugin is valid', httpValid.status === 0 && httpValid.data && httpValid.data.valid === true, httpValid.stderr)
+
+const badType = jsonExit(run('create.js', ['x', '--mcp', '--mcp-type', 'bogus', '-d', path.join(TMP, 'http-parent')]))
+assert('invalid mcp type rejected', badType.status === 1 && badType.data && badType.data.created === false)
+
+const placeholderRoot = path.join(TMP, 'ph-plugin')
+fs.mkdirSync(placeholderRoot, { recursive: true })
+fs.writeFileSync(path.join(placeholderRoot, 'plugin.json'), JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', name: 'ph-plugin' }))
+fs.writeFileSync(
+  path.join(placeholderRoot, 'mcp.json'),
+  JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json', mcpServers: { s: { type: 'sse', url: 'http://${FOO}/sse' } } })
+)
+const phRes = jsonExit(run('validate.js', [placeholderRoot, '--json']))
+assert('unknown placeholder in url reported', phRes.status === 1 && phRes.data.mcp.errors.some((e) => e.message.includes('unknown placeholder')))
+
+const phOkRoot = path.join(TMP, 'ph-ok-plugin')
+fs.mkdirSync(phOkRoot, { recursive: true })
+fs.writeFileSync(path.join(phOkRoot, 'plugin.json'), JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', name: 'ph-ok-plugin' }))
+fs.writeFileSync(
+  path.join(phOkRoot, 'mcp.json'),
+  JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json', mcpServers: { s: { type: 'sse', url: 'https://${PLUGIN_ROOT}/sse' } } })
+)
+const phOkRes = jsonExit(run('validate.js', [phOkRoot, '--json']))
+assert('valid placeholder in url accepted', phOkRes.status === 0 && phOkRes.data && phOkRes.data.valid === true, phOkRes.stderr)
+
+console.log('frontmatter')
+const fmRoot = path.join(TMP, 'fm-plugin')
+fs.mkdirSync(path.join(fmRoot, 'skills/demo'), { recursive: true })
+fs.writeFileSync(path.join(fmRoot, 'plugin.json'), JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', name: 'fm-plugin' }))
+fs.writeFileSync(
+  path.join(fmRoot, 'skills/demo/SKILL.md'),
+  '---\nname: demo\ndescription: A skill exercising frontmatter validation rules end to end.\nallowed-tools: Read Write\nunknown-key: ignored\n---\n\nBody text.\n'
+)
+const fmRes = jsonExit(run('validate.js', [fmRoot, '--json']))
+assert('allowed-tools accepted', fmRes.status === 0 && fmRes.data && fmRes.data.valid === true, fmRes.stderr)
+assert('unknown frontmatter field warns', fmRes.data.skills[0].warnings.some((w) => w.message.includes("unknown frontmatter field 'unknown-key'")))
+
+const fmBadToolsRoot = path.join(TMP, 'fm-badtools')
+fs.mkdirSync(path.join(fmBadToolsRoot, 'skills/demo'), { recursive: true })
+fs.writeFileSync(path.join(fmBadToolsRoot, 'plugin.json'), JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', name: 'fm-badtools' }))
+fs.writeFileSync(
+  path.join(fmBadToolsRoot, 'skills/demo/SKILL.md'),
+  '---\nname: demo\ndescription: A skill with an invalid allowed-tools value for testing purposes.\nallowed-tools: "_bad tool/name"\n---\n\nBody.\n'
+)
+const fmBadToolsRes = jsonExit(run('validate.js', [fmBadToolsRoot, '--json']))
+assert('invalid allowed-tools reported', fmBadToolsRes.status === 1 && fmBadToolsRes.data.skills[0].errors.some((e) => e.message.includes('invalid tool name')))
+
 console.log('validate examples')
 for (const ex of ['hello-plugin', 'code-review-assistant', 'git-release-notes']) {
   const res = jsonExit(run('validate.js', [path.join(ROOT, 'examples', ex), '--json']))

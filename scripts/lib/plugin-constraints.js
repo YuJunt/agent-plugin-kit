@@ -111,11 +111,19 @@ function validateManifestObject(manifest) {
 }
 
 function validateMcpUrl(url) {
+  if (typeof url !== 'string' || url.length === 0) return ['url must be a non-empty string']
+  const placeholderRe = /\$\{[A-Z0-9_]+\}/g
+  const placeholders = new Set(url.match(placeholderRe) || [])
+  for (const ph of placeholders) {
+    if (ph !== '${PLUGIN_ROOT}' && ph !== '${PLUGIN_DATA}') {
+      return [`url contains unknown placeholder ${ph}; only \${PLUGIN_ROOT} and \${PLUGIN_DATA} are permitted`]
+    }
+  }
   let parsed
   try {
-    parsed = new URL(url)
+    parsed = new URL(url.replace(placeholderRe, 'localhost'))
   } catch {
-    return ['url must be an absolute HTTP or HTTPS URL']
+    return ['url must be an absolute HTTP or HTTPS URL (with any ${PLUGIN_ROOT}/${PLUGIN_DATA} placeholders resolved)']
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     return ['url must use http or https']

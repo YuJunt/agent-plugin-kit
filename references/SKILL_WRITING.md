@@ -24,7 +24,8 @@ Each immediate child of `skills/` containing a `SKILL.md` file is one skill. Dee
 | `license` | No | License name or bundled license file reference |
 | `compatibility` | No | Environment requirements (max 500 chars) |
 | `metadata` | No | map of string → string |
-| `allowed-tools` | No | Space-separated pre-approved tools (experimental) |
+| `allowed-tools` | No | Space-separated pre-approved tools (experimental). Each tool name is `[a-zA-Z0-9][a-zA-Z0-9._-]*`; unknown field names are reported as warnings |
+| `version` | No | Skill version string |
 
 ## Body
 

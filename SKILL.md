@@ -29,7 +29,7 @@ Run the bundled Node.js scripts from the skill root. All scripts are zero-depend
    ```
    node scripts/create.js <plugin-name> --full -d <output-dir>
    ```
-   Options: `--full` (complete skeleton: full manifest + skills + mcp + server.js stub + LICENSE + CHANGELOG), `--minimal` (manifest + skills placeholder), `-s/--skills`, `--skill <name>` (repeatable for multiple skills), `-m/--mcp`, `-d/--dir`.
+   Options: `--full` (complete skeleton: full manifest + skills + mcp + server.js stub + LICENSE + CHANGELOG), `--minimal` (manifest + skills placeholder), `-s/--skills`, `--skill <name>` (repeatable for multiple skills), `-m/--mcp`, `--mcp-type stdio|streamable-http|sse`, `--mcp-url <url>`, `-d/--dir`.
 
 2. **Validate** a plugin directory:
    ```
@@ -41,7 +41,7 @@ Run the bundled Node.js scripts from the skill root. All scripts are zero-depend
    ```
    node scripts/pack.js <plugin-root> -o <output-dir>
    ```
-   Produces `<name>-<version>.tgz`.
+   Produces `<name>-<version>.tgz`. Options: `--dry-run` (list files without writing), `--verify` (unpack + re-validate the archive), `--include <globs>` / `--exclude <globs>` (filter packaged files).
 
 ## Plugin structure (the portable contract)
 
@@ -67,13 +67,14 @@ my-plugin/
 
 - Skills are discovered at `skills/<name>/SKILL.md` (immediate children only, no recursion).
 - `SKILL.md` requires YAML frontmatter with `name` and `description`. Skill `name` must match its parent directory and the Agent Skills naming rules.
+- Optional frontmatter: `license`, `compatibility`, `metadata`, `allowed-tools` (space-separated tool names), `version`. Unknown frontmatter fields are reported as warnings.
 
 ### mcp.json rules
 
 - Must be `{"$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json", "mcpServers": {...}}`.
 - Each server entry has a `type`: `stdio`, `streamable-http`, or `sse`.
 - `stdio` fields: `command` (single token, bare name or `./` plugin-relative path), `args`, `env`, `cwd`. `args`/`env`/`cwd` support `${PLUGIN_ROOT}` and `${PLUGIN_DATA}`.
-- `streamable-http`/`sse` fields: `url` (absolute http/https, loopback-only http), `headers`.
+- `streamable-http`/`sse` fields: `url` (absolute http/https, loopback-only http), `headers`. URLs may use `${PLUGIN_ROOT}` / `${PLUGIN_DATA}` placeholders; unknown placeholders are rejected.
 - The `$schema` version must match `plugin.json`'s version.
 
 ## Detailed reference
@@ -90,10 +91,13 @@ Load the following files as needed (progressive disclosure — keep SKILL.md lea
 - Always validate after creating or editing a plugin: `node scripts/validate.js <plugin-root> --json`.
 - Use `--full` when the plugin will contain both skills and MCP servers; otherwise add components with `-s`/`-m`.
 - For multiple skills, pass `--skill <name>` once per skill: `node scripts/create.js pkg --full --skill a --skill b`.
+- Choose the MCP transport at scaffold time with `--mcp-type`: stdio for bundled local servers, `streamable-http`/`sse` for remote endpoints.
 - Plugin-relative paths in configs must start with `./`. Use `${PLUGIN_ROOT}` for bundled files and `${PLUGIN_DATA}` for writable state.
 - Never embed credentials in `mcp.json` headers or env values (they are visible package data).
 - A component failure is isolated: one invalid skill or MCP server does not invalidate the whole plugin. Fix and re-validate.
 - The validator warns about broken relative references in SKILL.md and missing `./command` files — fix these before packaging.
+- Preview archives with `--dry-run` and prove they round-trip with `--verify` before distributing.
+- After changing any script, run `npm test` (behavior + contract suites) to catch regressions.
 
 ## Examples
 

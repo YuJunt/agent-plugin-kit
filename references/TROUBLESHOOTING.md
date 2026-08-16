@@ -21,33 +21,21 @@ Common issues when creating or validating Agent Plugins, and how to fix them.
 | `name ... must match the parent directory name` | Skill name ≠ folder name | Rename folder or change `name` |
 | `required field description is missing` | No description | Add description (what + when) |
 | `description must be at most 1024` | Too long | Shorten it |
-
-## MCP errors
-
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| `command must be a single executable token` | Shell command string like `npx -y foo` | Use bare name (`npx`) with `args` array, or a `./` plugin-relative path |
-| `cwd must be a ./ plugin-relative path` | Bare path or `../` in cwd | Use `./data`, `${PLUGIN_ROOT}/data`, or `${PLUGIN_DATA}/data` |
-| `non-loopback endpoints must use HTTPS` | `http://` for public host | Use `https://`; loopback-only for `http://` |
-| `url must not contain user information` | `https://user:pass@host` | Remove credentials; auth is client-managed |
-| `env must not contain reserved PLUGIN_ROOT or PLUGIN_DATA` | Reserved key in env | Remove; clients set these themselves |
-| `$schema does not match plugin.json` | Version mismatch | Align both `$schema` values |
-
-## Path safety
-
-| Symptom | Cause | Fix |
-|---------|-------|-----|
-| `path resolves outside the plugin root` | `../` escape | All package paths must resolve within the root |
-| `path escapes through a symlink` | Symlink pointing outside | Remove symlink or retarget inside the root |
+| `allowed-tools contains invalid tool name` | Tool name with `/` or leading `_` | Use plain identifiers, space-separated |
+| `unknown frontmatter field ... is ignored` | Typo or non-standard field | Remove it or move data under `metadata` |
 
 ## Packaging
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
 | `plugin is not valid; run validate first` | Plugin fails validation | Run `node scripts/validate.js <root> --json`, fix reported errors, re-pack |
+| `--verify` reports errors | Packed archive missing files referenced in configs | Re-check `--include` filters; referenced files are always required |
 
 ## Debugging tips
 
 - Always validate after creating or editing: `node scripts/validate.js <plugin-root> --json`
 - Use `--json` for machine-readable output
+- Preview the archive contents without writing: `node scripts/pack.js <root> --dry-run`
+- Verify a packed archive round-trips through validation: `node scripts/pack.js <root> --verify -o <dir>`
+- Run the full regression suite after changing scripts: `npm test`
 - A single failing component does not invalidate the whole plugin — fix it and re-validate

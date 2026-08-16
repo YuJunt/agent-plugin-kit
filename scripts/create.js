@@ -14,6 +14,8 @@ function parseArgs(argv) {
     skill: null,
     skillList: [],
     mcp: false,
+    mcpType: 'stdio',
+    mcpUrl: 'http://localhost:8080/mcp',
     full: false,
     minimal: false,
     dir: process.cwd(),
@@ -31,6 +33,14 @@ function parseArgs(argv) {
       case '-m':
       case '--mcp':
         args.mcp = true
+        break
+      case '--mcp-type':
+        i += 1
+        args.mcpType = argv[i]
+        break
+      case '--mcp-url':
+        i += 1
+        args.mcpUrl = argv[i]
         break
       case '--skill':
         i += 1
@@ -63,6 +73,10 @@ function parseArgs(argv) {
         } else if (arg.startsWith('--skill=')) {
           args.skill = arg.slice('--skill='.length)
           args.skillList.push(args.skill)
+        } else if (arg.startsWith('--mcp-type=')) {
+          args.mcpType = arg.slice('--mcp-type='.length)
+        } else if (arg.startsWith('--mcp-url=')) {
+          args.mcpUrl = arg.slice('--mcp-url='.length)
         } else if (arg.startsWith('-')) {
           console.error(`Unknown option: ${arg}`)
           args.help = true
@@ -82,8 +96,10 @@ Create an Agent Plugin skeleton conforming to Agent Plugins 1.0.0.
 
 Options:
   -s, --skills        Include skills/ directory with a SKILL.md template
-      --skill <name>  Name of the generated skill (repeatable? no - use --skills for default). Default: hello
-  -m, --mcp           Include mcp.json + server.js stub
+      --skill <name>  Name of the generated skill (repeatable; default: hello)
+  -m, --mcp           Include mcp.json (+ server.js stub for stdio)
+      --mcp-type <t>  MCP transport: stdio, streamable-http, or sse (default: stdio)
+      --mcp-url <url> URL for streamable-http/sse transports (default: http://localhost:8080/mcp)
       --full          Complete skeleton (full manifest + skills + mcp + server.js + LICENSE + CHANGELOG)
       --minimal       Minimal skeleton (manifest + skills placeholder)
   -d, --dir <path>    Output directory (default: current directory)
@@ -92,7 +108,8 @@ Options:
 
 Examples:
   node scripts/create.js my-plugin --full -d ./plugins
-  node scripts/create.js my-plugin --skills --skill summarize --mcp`
+  node scripts/create.js my-plugin --skills --skill summarize --mcp
+  node scripts/create.js my-plugin --mcp --mcp-type streamable-http --mcp-url https://example.com/mcp`
 }
 
 function render(template, vars) {
@@ -109,10 +126,16 @@ function writeFile(root, relPath, content) {
   fs.writeFileSync(target, content, 'utf8')
 }
 
+const MCP_TYPES = ['stdio', 'streamable-http', 'sse']
+
 function createSkeleton(args) {
   const errors = validatePluginName(args.name)
   if (errors.length > 0) {
     return { created: false, errors: errors.map((e) => ({ field: 'name', message: e })) }
+  }
+
+  if (!MCP_TYPES.includes(args.mcpType)) {
+    return { created: false, errors: [{ field: 'mcpType', message: `unknown mcp type '${args.mcpType}'; must be one of: ${MCP_TYPES.join(', ')}` }] }
   }
 
   const full = args.full
@@ -128,7 +151,7 @@ function createSkeleton(args) {
   const created = []
   const skillNames =
     Array.isArray(args.skillList) && args.skillList.length > 0 ? args.skillList : [args.skill || 'hello']
-  const vars = { PLUGIN_NAME: args.name, SERVER_NAME: 'server', DATE: new Date().toISOString().slice(0, 10) }
+  const vars = { PLUGIN_NAME: args.name, SERVER_NAME: 'server', MCP_URL: args.mcpUrl, DATE: new Date().toISOString().slice(0, 10) }
 
   const manifest = full
     ? render(readTemplate('plugin.json.tpl'), vars)
@@ -144,10 +167,18 @@ function createSkeleton(args) {
   }
 
   if (includeMcp) {
-    writeFile(outputRoot, 'mcp.json', render(readTemplate('mcp.json.tpl'), vars))
+    const template =
+      args.mcpType === 'streamable-http'
+        ? 'mcp.http.json.tpl'
+        : args.mcpType === 'sse'
+          ? 'mcp.sse.json.tpl'
+          : 'mcp.json.tpl'
+    writeFile(outputRoot, 'mcp.json', render(readTemplate(template), vars))
     created.push('mcp.json')
-    writeFile(outputRoot, 'server.js', render(readTemplate('server.js.tpl'), vars))
-    created.push('server.js')
+    if (args.mcpType === 'stdio') {
+      writeFile(outputRoot, 'server.js', render(readTemplate('server.js.tpl'), vars))
+      created.push('server.js')
+    }
   }
 
   if (full) {

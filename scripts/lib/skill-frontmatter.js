@@ -5,6 +5,16 @@ const path = require('path')
 
 const SKILL_NAME_RE = /^(?!.*--)[a-z0-9]+(?:-[a-z0-9]+)*$/
 
+const KNOWN_FRONTMATTER_FIELDS = new Set([
+  'name',
+  'description',
+  'license',
+  'compatibility',
+  'metadata',
+  'allowed-tools',
+  'version',
+])
+
 function resolveRefsInBody(body, skillDir, warnings) {
   if (!skillDir || typeof body !== 'string') return
   const refs = new Set()
@@ -119,6 +129,15 @@ function validateSkillName(name) {
   return []
 }
 
+function validateAllowedTools(value) {
+  if (typeof value !== 'string') return ['allowed-tools must be a space-separated string']
+  const tools = value.split(/\s+/).filter(Boolean)
+  if (tools.length === 0) return ['allowed-tools must list at least one tool name']
+  const bad = tools.filter((t) => !/^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(t))
+  if (bad.length > 0) return [`allowed-tools contains invalid tool name(s): ${bad.join(', ')}`]
+  return []
+}
+
 function validateSkill(filePath, content, dirName) {
   const errors = []
   const warnings = []
@@ -131,6 +150,12 @@ function validateSkill(filePath, content, dirName) {
   }
 
   const fm = parsed.frontmatter
+
+  for (const key of Object.keys(fm)) {
+    if (!KNOWN_FRONTMATTER_FIELDS.has(key)) {
+      warnings.push({ field: key, message: `unknown frontmatter field '${key}' is ignored` })
+    }
+  }
 
   if (fm.name === undefined || fm.name === null || fm.name === '') {
     errors.push({ field: 'name', message: 'required field name is missing or empty' })
@@ -171,6 +196,16 @@ function validateSkill(filePath, content, dirName) {
     }
   }
 
+  if (fm['allowed-tools'] !== undefined) {
+    for (const err of validateAllowedTools(fm['allowed-tools'])) {
+      errors.push({ field: 'allowed-tools', message: err })
+    }
+  }
+
+  if (fm.version !== undefined && typeof fm.version !== 'string') {
+    errors.push({ field: 'version', message: 'version must be a string' })
+  }
+
   if (!parsed.body || !parsed.body.trim()) {
     warnings.push({ field: 'body', message: 'SKILL.md body is empty; add instructions' })
   } else {
@@ -180,4 +215,4 @@ function validateSkill(filePath, content, dirName) {
   return { valid: errors.length === 0, errors, warnings, frontmatter: fm }
 }
 
-module.exports = { validateSkill, parseFrontmatter, validateSkillName }
+module.exports = { validateSkill, parseFrontmatter, validateSkillName, validateAllowedTools }
