@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "hello-plugin",
+  "version": "0.1.0",
+  "description": "A minimal example Agent Plugin with one skill and one stdio MCP server.",
+  "author": {
+    "name": "Agent Plugin Kit"
+  },
+  "license": "MIT",
+  "keywords": ["example", "hello"]
+}

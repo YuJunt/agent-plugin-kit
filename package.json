@@ -1,0 +1,34 @@
+{
+  "name": "agent-plugin-kit",
+  "version": "1.0.0",
+  "description": "An Agent Skill for creating, validating, and packaging Agent Plugins (Agent Plugins 1.0.0 specification). Zero-dependency Node.js scripts.",
+  "license": "MIT",
+  "type": "commonjs",
+  "bin": {
+    "agent-plugin": "scripts/bin/agent-plugin.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "create": "node scripts/create.js",
+    "validate": "node scripts/validate.js",
+    "pack": "node scripts/pack.js",
+    "test": "node scripts/bin/agent-plugin.js --help"
+  },
+  "files": [
+    "SKILL.md",
+    "scripts",
+    "schemas",
+    "references",
+    "assets",
+    "examples"
+  ],
+  "keywords": [
+    "agent-plugins",
+    "agent-skills",
+    "mcp",
+    "plugin",
+    "skill"
+  ]
+}

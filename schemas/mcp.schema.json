@@ -1,0 +1,104 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "title": "Agent Plugin MCP configuration",
+  "description": "Describes MCP servers bundled with an Agent Plugin.",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "const": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json"
+    },
+    "mcpServers": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/server"
+      }
+    }
+  },
+  "required": ["$schema", "mcpServers"],
+  "additionalProperties": false,
+  "$defs": {
+    "server": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/stdio"
+        },
+        {
+          "$ref": "#/$defs/streamableHttp"
+        },
+        {
+          "$ref": "#/$defs/sse"
+        }
+      ]
+    },
+    "stdio": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "stdio"
+        },
+        "command": {
+          "type": "string",
+          "pattern": "^(\\/|[a-zA-Z0-9._-]+$|\\.\\/)"
+        },
+        "args": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "cwd": {
+          "type": "string",
+          "pattern": "^(\\./|\\$\\{PLUGIN_ROOT\\}(/|$)|\\$\\{PLUGIN_DATA\\}(/|$))"
+        }
+      },
+      "required": ["type", "command"],
+      "additionalProperties": false
+    },
+    "streamableHttp": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "streamable-http"
+        },
+        "url": {
+          "type": "string"
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["type", "url"],
+      "additionalProperties": false
+    },
+    "sse": {
+      "type": "object",
+      "properties": {
+        "type": {
+          "const": "sse"
+        },
+        "url": {
+          "type": "string"
+        },
+        "headers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["type", "url"],
+      "additionalProperties": false
+    }
+  }
+}

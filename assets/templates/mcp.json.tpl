@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
+  "mcpServers": {
+    "{{SERVER_NAME}}": {
+      "type": "stdio",
+      "command": "./server.js",
+      "args": [],
+      "env": {}
+    }
+  }
+}
