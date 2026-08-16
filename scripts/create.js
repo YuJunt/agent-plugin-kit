@@ -10,7 +10,9 @@ const TEMPLATES_DIR = path.join(__dirname, '..', 'assets', 'templates')
 function parseArgs(argv) {
   const args = {
     name: null,
-    skills: false,
+    skills: [],
+    skill: null,
+    skillList: [],
     mcp: false,
     full: false,
     minimal: false,
@@ -24,11 +26,16 @@ function parseArgs(argv) {
     switch (arg) {
       case '-s':
       case '--skills':
-        args.skills = true
+        args.skills = []
         break
       case '-m':
       case '--mcp':
         args.mcp = true
+        break
+      case '--skill':
+        i += 1
+        args.skill = argv[i]
+        if (argv[i]) args.skillList.push(argv[i])
         break
       case '--full':
         args.full = true
@@ -53,6 +60,9 @@ function parseArgs(argv) {
           args.dir = arg.slice('--dir='.length)
         } else if (arg.startsWith('-d=')) {
           args.dir = arg.slice('-d='.length)
+        } else if (arg.startsWith('--skill=')) {
+          args.skill = arg.slice('--skill='.length)
+          args.skillList.push(args.skill)
         } else if (arg.startsWith('-')) {
           console.error(`Unknown option: ${arg}`)
           args.help = true
@@ -72,8 +82,9 @@ Create an Agent Plugin skeleton conforming to Agent Plugins 1.0.0.
 
 Options:
   -s, --skills        Include skills/ directory with a SKILL.md template
-  -m, --mcp           Include mcp.json template
-      --full          Complete skeleton (full manifest + skills + mcp + LICENSE)
+      --skill <name>  Name of the generated skill (repeatable? no - use --skills for default). Default: hello
+  -m, --mcp           Include mcp.json + server.js stub
+      --full          Complete skeleton (full manifest + skills + mcp + server.js + LICENSE + CHANGELOG)
       --minimal       Minimal skeleton (manifest + skills placeholder)
   -d, --dir <path>    Output directory (default: current directory)
       --no-input      Non-interactive mode
@@ -81,7 +92,7 @@ Options:
 
 Examples:
   node scripts/create.js my-plugin --full -d ./plugins
-  node scripts/create.js my-plugin --skills --mcp`
+  node scripts/create.js my-plugin --skills --skill summarize --mcp`
 }
 
 function render(template, vars) {
@@ -115,7 +126,9 @@ function createSkeleton(args) {
   fs.mkdirSync(outputRoot, { recursive: true })
 
   const created = []
-  const vars = { PLUGIN_NAME: args.name, SKILL_NAME: 'hello', SERVER_NAME: 'server' }
+  const skillNames =
+    Array.isArray(args.skillList) && args.skillList.length > 0 ? args.skillList : [args.skill || 'hello']
+  const vars = { PLUGIN_NAME: args.name, SERVER_NAME: 'server', DATE: new Date().toISOString().slice(0, 10) }
 
   const manifest = full
     ? render(readTemplate('plugin.json.tpl'), vars)
@@ -124,22 +137,28 @@ function createSkeleton(args) {
   created.push('plugin.json')
 
   if (includeSkills) {
-    writeFile(outputRoot, 'skills/hello/SKILL.md', render(readTemplate('SKILL.md.tpl'), { ...vars, SKILL_NAME: 'hello' }))
-    created.push('skills/hello/SKILL.md')
+    for (const skill of skillNames) {
+      writeFile(outputRoot, `skills/${skill}/SKILL.md`, render(readTemplate('SKILL.md.tpl'), { ...vars, SKILL_NAME: skill }))
+      created.push(`skills/${skill}/SKILL.md`)
+    }
   }
 
   if (includeMcp) {
     writeFile(outputRoot, 'mcp.json', render(readTemplate('mcp.json.tpl'), vars))
     created.push('mcp.json')
+    writeFile(outputRoot, 'server.js', render(readTemplate('server.js.tpl'), vars))
+    created.push('server.js')
   }
 
   if (full) {
     writeFile(
       outputRoot,
       'LICENSE',
-      `MIT License\n\nCopyright (c) ${new Date().getFullYear()} ${args.name} authors\n\nPermission is hereby granted, free of charge, to any person obtaining a copy of this software...`
+      render(readTemplate('LICENSE.tpl'), { ...vars, YEAR: new Date().getFullYear().toString() })
     )
     created.push('LICENSE')
+    writeFile(outputRoot, 'CHANGELOG.md', render(readTemplate('CHANGELOG.md.tpl'), vars))
+    created.push('CHANGELOG.md')
   }
 
   return { created: true, root: outputRoot, files: created }

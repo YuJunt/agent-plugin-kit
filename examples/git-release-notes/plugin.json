@@ -1,0 +1,11 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "git-release-notes",
+  "version": "0.1.0",
+  "description": "Generates release notes from git history by analyzing commits, conventional commits, and version tags.",
+  "author": {
+    "name": "Agent Plugin Kit"
+  },
+  "license": "MIT",
+  "keywords": ["release", "changelog", "git", "notes"]
+}

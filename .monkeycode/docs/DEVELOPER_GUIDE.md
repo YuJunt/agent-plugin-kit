@@ -11,8 +11,9 @@
 1. 克隆本仓库
 2. 编写 / 修改 `SKILL.md` 与 `scripts/` 下脚本
 3. 本地验证脚本功能：`node scripts/validate.js <示例插件目录>`
-4. 安装到你的 AI 客户端：将本仓库目录（或副本）放入客户端的 skills 目录
-5. 发布：将 skill 目录打包，按各平台 skill 安装流程分发
+4. 运行回归测试套件：`npm test`（覆盖 create/validate/pack 三个引擎 + 三个示例插件）
+5. 安装到你的 AI 客户端：将本仓库目录（或副本）放入客户端的 skills 目录
+6. 发布：将 skill 目录打包，按各平台 skill 安装流程分发
 
 ## 项目结构说明
 

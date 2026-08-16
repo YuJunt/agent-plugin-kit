@@ -101,7 +101,7 @@ function validateManifest(root) {
 }
 
 function validateSkills(root) {
-  const report = { valid: true, skills: [] }
+  const report = { valid: true, skills: [], warnings: [] }
   const skillsDir = path.join(root, 'skills')
 
   if (!fs.existsSync(skillsDir)) {
@@ -109,14 +109,17 @@ function validateSkills(root) {
   }
   if (!isDir(skillsDir)) {
     report.valid = false
+    report.warnings.push({ message: 'skills path exists but is not a directory' })
     return report
   }
 
+  let found = 0
   for (const entry of fs.readdirSync(skillsDir)) {
     const skillDir = path.join(skillsDir, entry)
     if (!isDir(skillDir)) continue
     const skillMd = path.join(skillDir, 'SKILL.md')
     if (!isFile(skillMd)) continue
+    found += 1
 
     let content
     try {
@@ -128,6 +131,10 @@ function validateSkills(root) {
 
     const result = validateSkill(skillMd, content, entry)
     report.skills.push({ name: entry, valid: result.valid, errors: result.errors, warnings: result.warnings })
+  }
+
+  if (found === 0) {
+    report.warnings.push({ message: 'skills/ directory contains no skill (no subdirectory with SKILL.md)' })
   }
 
   return report
@@ -191,6 +198,11 @@ function validateMcp(root, manifestSchema) {
       if (!server || typeof server !== 'object' || Array.isArray(server)) {
         serverReport.valid = false
         serverReport.errors.push({ message: 'server entry must be an object' })
+      } else if (server.type === 'stdio' && typeof server.command === 'string' && server.command.startsWith('./')) {
+        const resolved = path.resolve(root, server.command)
+        if (!isFile(resolved)) {
+          serverReport.errors.push({ message: `command '${server.command}' does not exist in the plugin` })
+        }
       }
       report.servers.push(serverReport)
     }
@@ -242,6 +254,7 @@ function validate(root) {
 
   const skills = validateSkills(root)
   report.skills = skills.skills
+  report.skillsWarnings = skills.warnings
 
   const mcp = validateMcp(root, report.manifest.valid ? readJson(path.join(root, 'plugin.json')).data?.$schema : null)
   report.mcp = {
@@ -273,6 +286,7 @@ function validate(root) {
   report.summary.warnings =
     report.manifest.warnings.length +
     report.skills.reduce((a, s) => a + s.warnings.length, 0) +
+    (report.skillsWarnings ? report.skillsWarnings.length : 0) +
     report.mcp.warnings.length +
     report.mcp.servers.reduce((a, s) => a + s.warnings.length, 0)
 
@@ -316,6 +330,9 @@ Options:
     for (const s of report.skills) {
       for (const e of s.errors) console.log(`  [skill:${s.name}] ${e.message}`)
       for (const e of s.warnings) console.log(`  [skill:${s.name}!] ${e.message}`)
+    }
+    if (report.skillsWarnings) {
+      for (const e of report.skillsWarnings) console.log(`  [skills!] ${e.message}`)
     }
     for (const e of report.mcp.errors) console.log(`  [mcp] ${e.field || ''} ${e.message}`)
     for (const s of report.mcp.servers) {

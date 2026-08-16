@@ -28,6 +28,9 @@ function parseArgs(argv) {
   return args
 }
 
+const EXCLUDE_DIRS = new Set(['.git', 'node_modules', '.hg', '.svn', 'dist', 'build'])
+const EXCLUDE_FILES = new Set(['.DS_Store', 'Thumbs.db'])
+
 function collectFiles(root) {
   const files = []
   const walk = (dir, prefix) => {
@@ -37,8 +40,10 @@ function collectFiles(root) {
       const stat = fs.lstatSync(abs)
       if (stat.isSymbolicLink()) continue
       if (stat.isDirectory()) {
+        if (EXCLUDE_DIRS.has(entry)) continue
         walk(abs, rel)
       } else if (stat.isFile()) {
+        if (EXCLUDE_FILES.has(entry)) continue
         files.push({ abs, rel, size: stat.size, mtime: Math.floor(stat.mtimeMs / 1000) })
       }
     }

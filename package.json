@@ -14,7 +14,7 @@
     "create": "node scripts/create.js",
     "validate": "node scripts/validate.js",
     "pack": "node scripts/pack.js",
-    "test": "node scripts/bin/agent-plugin.js --help"
+    "test": "node test/run-tests.js"
   },
   "files": [
     "SKILL.md",
@@ -22,7 +22,8 @@
     "schemas",
     "references",
     "assets",
-    "examples"
+    "examples",
+    "test"
   ],
   "keywords": [
     "agent-plugins",

@@ -29,7 +29,7 @@ Run the bundled Node.js scripts from the skill root. All scripts are zero-depend
    ```
    node scripts/create.js <plugin-name> --full -d <output-dir>
    ```
-   Options: `--full` (complete skeleton with skills + mcp + LICENSE), `--minimal` (plugin.json + skills placeholder), `-s/--skills`, `-m/--mcp`, `-d/--dir`.
+   Options: `--full` (complete skeleton: full manifest + skills + mcp + server.js stub + LICENSE + CHANGELOG), `--minimal` (manifest + skills placeholder), `-s/--skills`, `--skill <name>` (repeatable for multiple skills), `-m/--mcp`, `-d/--dir`.
 
 2. **Validate** a plugin directory:
    ```
@@ -89,13 +89,23 @@ Load the following files as needed (progressive disclosure — keep SKILL.md lea
 
 - Always validate after creating or editing a plugin: `node scripts/validate.js <plugin-root> --json`.
 - Use `--full` when the plugin will contain both skills and MCP servers; otherwise add components with `-s`/`-m`.
+- For multiple skills, pass `--skill <name>` once per skill: `node scripts/create.js pkg --full --skill a --skill b`.
 - Plugin-relative paths in configs must start with `./`. Use `${PLUGIN_ROOT}` for bundled files and `${PLUGIN_DATA}` for writable state.
 - Never embed credentials in `mcp.json` headers or env values (they are visible package data).
 - A component failure is isolated: one invalid skill or MCP server does not invalidate the whole plugin. Fix and re-validate.
+- The validator warns about broken relative references in SKILL.md and missing `./command` files — fix these before packaging.
 
 ## Examples
 
-The [examples/hello-plugin](examples/hello-plugin) directory is a complete valid plugin. Use it as a reference and as a test fixture:
+Three complete, validated example plugins ship with this skill under [examples/](examples):
+
+- [examples/hello-plugin](examples/hello-plugin) — minimal plugin (1 skill + stdio MCP server)
+- [examples/code-review-assistant](examples/code-review-assistant) — code review (2 skills + git MCP server)
+- [examples/git-release-notes](examples/git-release-notes) — release notes generator (2 skills + git history MCP server)
+
+Use them as references and test fixtures:
 ```
 node scripts/validate.js examples/hello-plugin --json
+node scripts/validate.js examples/code-review-assistant --json
+node scripts/validate.js examples/git-release-notes --json
 ```

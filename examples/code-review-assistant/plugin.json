@@ -1,0 +1,13 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "code-review-assistant",
+  "version": "0.1.0",
+  "description": "Guides code reviews with project-specific rules and performs security-focused analysis of changes.",
+  "author": {
+    "name": "Agent Plugin Kit",
+    "email": "agent-plugin-kit@example.com",
+    "url": "https://github.com/YuJunt/agent-plugin-kit"
+  },
+  "license": "MIT",
+  "keywords": ["code-review", "security", "git", "quality"]
+}

@@ -1,6 +1,35 @@
 'use strict'
 
+const fs = require('fs')
+const path = require('path')
+
 const SKILL_NAME_RE = /^(?!.*--)[a-z0-9]+(?:-[a-z0-9]+)*$/
+
+function resolveRefsInBody(body, skillDir, warnings) {
+  if (!skillDir || typeof body !== 'string') return
+  const refs = new Set()
+
+  const mdLinkRe = /\[[^\]]*\]\(([^)]+)\)/g
+  let m
+  while ((m = mdLinkRe.exec(body)) !== null) {
+    let target = m[1]
+    if (target.startsWith('http://') || target.startsWith('https://') || target.startsWith('#')) continue
+    target = target.split('#')[0]
+    if (target) refs.add(target)
+  }
+
+  const codeRefRe = /^\s*(?:scripts\/|references\/|assets\/)\S+/gm
+  while ((m = codeRefRe.exec(body)) !== null) {
+    refs.add(m[0].trim().split(/\s+/)[0])
+  }
+
+  for (const ref of refs) {
+    const resolved = path.join(skillDir, ref)
+    if (!fs.existsSync(resolved)) {
+      warnings.push({ field: 'body', message: `referenced file '${ref}' does not exist` })
+    }
+  }
+}
 
 function parseFrontmatter(content) {
   if (typeof content !== 'string') return { ok: false, error: 'SKILL.md content must be a string' }
@@ -93,6 +122,7 @@ function validateSkillName(name) {
 function validateSkill(filePath, content, dirName) {
   const errors = []
   const warnings = []
+  const skillDir = filePath ? path.dirname(filePath) : null
   const parsed = parseFrontmatter(content)
 
   if (!parsed.ok) {
@@ -143,6 +173,8 @@ function validateSkill(filePath, content, dirName) {
 
   if (!parsed.body || !parsed.body.trim()) {
     warnings.push({ field: 'body', message: 'SKILL.md body is empty; add instructions' })
+  } else {
+    resolveRefsInBody(parsed.body, skillDir, warnings)
   }
 
   return { valid: errors.length === 0, errors, warnings, frontmatter: fm }

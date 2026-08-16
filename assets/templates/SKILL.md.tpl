@@ -1,11 +1,16 @@
 ---
 name: {{SKILL_NAME}}
-description: Describe what this skill does and when to use it.
+description: Describe what this skill does and when to use it. Include keywords that help the agent decide when to activate it.
 ---
 
 # {{SKILL_NAME}}
 
 Describe what this skill helps the agent accomplish. Include step-by-step instructions, examples, and edge cases.
+
+## When to use
+
+- Trigger condition 1
+- Trigger condition 2
 
 ## Instructions
 
@@ -16,3 +21,8 @@ Describe what this skill helps the agent accomplish. Include step-by-step instru
 ## Examples
 
 Provide concrete input/output examples here.
+
+## Edge cases
+
+- Edge case 1 and how to handle it
+- Edge case 2 and how to handle it
