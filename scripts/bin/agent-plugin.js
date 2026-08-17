@@ -9,6 +9,7 @@ const scripts = {
   validate: 'validate.js',
   pack: 'pack.js',
   install: 'install.js',
+  doctor: 'doctor.js',
 }
 
 const subcommand = process.argv[2]
@@ -24,6 +25,7 @@ Commands:
   validate  Validate a plugin directory against the 1.0.0 spec
   pack      Package a valid plugin into a .tgz tarball
   install   Install a plugin into a client plugin directory
+  doctor    Diagnose the environment and installed plugins
 
 Run 'agent-plugin <command> --help' for command details.
 `)

@@ -365,5 +365,56 @@ fs.writeFileSync(path.join(extOkRoot, 'com.acme.ide', 'settings.json'), '{}')
 const extOkRes = jsonExit(run('validate.js', [extOkRoot, '--json', '--strict']))
 assert('consistent extension passes strict', extOkRes.status === 0, JSON.stringify(extOkRes.data && extOkRes.data.manifest.warnings))
 
+console.log('regression: unsupported spec version guidance')
+const futureRoot = path.join(TMP, 'future-plugin')
+fs.mkdirSync(futureRoot, { recursive: true })
+fs.writeFileSync(
+  path.join(futureRoot, 'plugin.json'),
+  JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/2.0.0/plugin.schema.json', name: 'future-plugin' })
+)
+const futureRes = jsonExit(run('validate.js', [futureRoot, '--json']))
+assert(
+  'future spec version gets targeted guidance',
+  futureRes.status === 1 &&
+    futureRes.data.manifest.errors.some((e) => e.message.includes('targets Agent Plugins 2.0.0') && e.message.includes('does not support yet')),
+  JSON.stringify(futureRes.data && futureRes.data.manifest.errors)
+)
+
+console.log('doctor.js')
+const docOkHome = path.join(TMP, 'doc-ok-home')
+const docOkEnv = { ...process.env, HOME: docOkHome, USERPROFILE: docOkHome }
+const docInstall = jsonExit(run('install.js', [createdRoot, '--target', 'claude'], null, docOkEnv))
+assert('doctor fixture: plugin installed to fake claude target', docInstall.status === 0, docInstall.stderr)
+const docRes = jsonExit(run('doctor.js', ['--json'], null, docOkEnv))
+const docClaude = docRes.data.targets.find((t) => t.name === 'claude')
+assert(
+  'doctor reports node and finds installed plugin',
+  docRes.status === 0 && docRes.data.node.ok === true && docClaude.plugins.length === 1 && docClaude.plugins[0].name === 'my-plugin' && docClaude.plugins[0].valid === true,
+  JSON.stringify(docRes.data)
+)
+
+const docBadHome = path.join(TMP, 'doc-bad-home')
+const docBadEnv = { ...process.env, HOME: docBadHome, USERPROFILE: docBadHome }
+fs.mkdirSync(path.join(docBadHome, '.claude', 'plugins', 'future-plugin'), { recursive: true })
+fs.writeFileSync(
+  path.join(docBadHome, '.claude', 'plugins', 'future-plugin', 'plugin.json'),
+  JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/2.0.0/plugin.schema.json', name: 'future-plugin' })
+)
+const docBadRes = jsonExit(run('doctor.js', ['--json'], null, docBadEnv))
+const docBadClaude = docBadRes.data.targets.find((t) => t.name === 'claude')
+assert(
+  'doctor flags invalid plugin and exits 1',
+  docBadRes.status === 1 && docBadClaude.plugins[0].valid === false && docBadRes.data.summary.invalidPlugins === 1,
+  JSON.stringify(docBadRes.data)
+)
+
+const docExplicit = jsonExit(run('doctor.js', ['--json', '--target', clientDir]))
+const docCustom = docExplicit.data.targets.find((t) => t.path === clientDir)
+assert(
+  'doctor scans explicit --target directory',
+  docCustom && docCustom.plugins.some((p) => p.name === 'my-plugin' && p.valid === true),
+  JSON.stringify(docExplicit.data && docExplicit.data.targets.map((t) => t.path))
+)
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail === 0 ? 0 : 1)

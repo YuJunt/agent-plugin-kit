@@ -20,6 +20,17 @@ const MANIFEST_FIELDS = new Set([
   'extensions',
 ])
 
+// Recognize an agent-plugins.org schema URL of any version (e.g. 1.1.0, 2.0.0)
+const SCHEMA_URL_RE = /^https:\/\/agent-plugins\.org\/schemas\/([^/]+)\/(plugin|mcp)\.schema\.json$/
+
+function schemaMismatchMessage(actual, expectedId) {
+  const m = SCHEMA_URL_RE.exec(actual || '')
+  if (m && m[1] !== '1.0.0') {
+    return `$schema '${actual}' targets Agent Plugins ${m[1]}, which this toolkit does not support yet (supported: 1.0.0); expected ${expectedId}`
+  }
+  return `$schema must be ${expectedId}`
+}
+
 function validatePluginName(name) {
   if (typeof name !== 'string') return ['name must be a string']
   if (name.length < 1 || name.length > 64) return ['name must be between 1 and 64 characters']
@@ -65,7 +76,7 @@ function validateManifestObject(manifest) {
   }
 
   if (typeof manifest.$schema !== 'string' || manifest.$schema !== PLUGIN_SCHEMA_ID) {
-    errors.push({ field: '$schema', level: 'error', message: `$schema must be ${PLUGIN_SCHEMA_ID}` })
+    errors.push({ field: '$schema', level: 'error', message: schemaMismatchMessage(manifest.$schema, PLUGIN_SCHEMA_ID) })
   }
 
   for (const err of validatePluginName(manifest.name)) {
@@ -254,7 +265,7 @@ function validateMcpObject(mcp) {
     return [{ field: 'mcp', level: 'error', message: 'mcp.json must contain a JSON object' }]
   }
   if (typeof mcp.$schema !== 'string' || mcp.$schema !== MCP_SCHEMA_ID) {
-    errors.push({ field: '$schema', level: 'error', message: `$schema must be ${MCP_SCHEMA_ID}` })
+    errors.push({ field: '$schema', level: 'error', message: schemaMismatchMessage(mcp.$schema, MCP_SCHEMA_ID) })
   }
   for (const key of Object.keys(mcp)) {
     if (key !== '$schema' && key !== 'mcpServers') {
