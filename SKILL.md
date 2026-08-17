@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Node.js 18+ (scripts use only built-in modules, no npm dependencies)
 metadata:
   author: YuJunt
-  version: "1.1.0"
+  version: "1.2.0"
 ---
 
 # Agent Plugin Kit
@@ -21,6 +21,7 @@ An Agent Plugin is a self-contained directory with a `plugin.json` manifest and 
 - User wants to package a plugin for distribution
 - User wants to install a plugin (directory or archive) into a client
 - User wants to check their environment or troubleshoot installed plugins
+- User wants advisory quality feedback on SKILL.md content
 - User asks about plugin structure, manifest fields, or MCP configuration
 
 ## Core workflow
@@ -56,6 +57,12 @@ Run the bundled Node.js scripts from the skill root. All scripts are zero-depend
    node scripts/doctor.js [--json] [--target <dir>]
    ```
    Reports the Node.js version, scans known client plugin directories (claude/cursor plus any explicit `--target`), and validates every installed plugin. Exit code 1 signals an unsupported Node version or an invalid installed plugin.
+
+6. **Lint** SKILL.md content quality:
+   ```
+   node scripts/lint.js <plugin-root-or-skill-dir> [--json]
+   ```
+   Advisory objective metrics per skill: body substance (< 200 chars is thin), `##` section headings, lists or code blocks, a `#` title heading, and bundled `scripts/`/`references/`/`assets/` files that are never referenced. Accepts a plugin root or a single skill directory. Exit code 1 when findings exist.
 
 ## Plugin structure (the portable contract)
 

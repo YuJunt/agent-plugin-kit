@@ -1,6 +1,6 @@
 {
   "name": "agent-plugin-kit",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "An Agent Skill for creating, validating, and packaging Agent Plugins (Agent Plugins 1.0.0 specification). Zero-dependency Node.js scripts.",
   "license": "MIT",
   "type": "commonjs",

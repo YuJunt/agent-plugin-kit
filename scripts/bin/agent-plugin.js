@@ -10,6 +10,7 @@ const scripts = {
   pack: 'pack.js',
   install: 'install.js',
   doctor: 'doctor.js',
+  lint: 'lint.js',
 }
 
 const subcommand = process.argv[2]
@@ -26,6 +27,7 @@ Commands:
   pack      Package a valid plugin into a .tgz tarball
   install   Install a plugin into a client plugin directory
   doctor    Diagnose the environment and installed plugins
+  lint      Lint SKILL.md content quality (advisory)
 
 Run 'agent-plugin <command> --help' for command details.
 `)

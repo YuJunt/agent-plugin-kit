@@ -15,9 +15,9 @@ const KNOWN_FRONTMATTER_FIELDS = new Set([
   'version',
 ])
 
-function resolveRefsInBody(body, skillDir, warnings) {
-  if (!skillDir || typeof body !== 'string') return
+function collectBodyRefs(body) {
   const refs = new Set()
+  if (typeof body !== 'string') return refs
 
   const mdLinkRe = /\[[^\]]*\]\(([^)]+)\)/g
   let m
@@ -33,7 +33,12 @@ function resolveRefsInBody(body, skillDir, warnings) {
     refs.add(m[0].trim().split(/\s+/)[0])
   }
 
-  for (const ref of refs) {
+  return refs
+}
+
+function resolveRefsInBody(body, skillDir, warnings) {
+  if (!skillDir || typeof body !== 'string') return
+  for (const ref of collectBodyRefs(body)) {
     const resolved = path.join(skillDir, ref)
     if (!fs.existsSync(resolved)) {
       warnings.push({ field: 'body', message: `referenced file '${ref}' does not exist` })
@@ -215,4 +220,4 @@ function validateSkill(filePath, content, dirName) {
   return { valid: errors.length === 0, errors, warnings, frontmatter: fm }
 }
 
-module.exports = { validateSkill, parseFrontmatter, validateSkillName, validateAllowedTools }
+module.exports = { validateSkill, parseFrontmatter, validateSkillName, validateAllowedTools, collectBodyRefs }

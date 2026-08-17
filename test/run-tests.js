@@ -416,5 +416,61 @@ assert(
   JSON.stringify(docExplicit.data && docExplicit.data.targets.map((t) => t.path))
 )
 
+console.log('lint.js')
+const lintOkRes = jsonExit(run('lint.js', [createdRoot, '--json']))
+assert('scaffolded plugin lints clean', lintOkRes.status === 0 && lintOkRes.data.clean === true && lintOkRes.data.linted === 2, JSON.stringify(lintOkRes.data))
+
+const lintThinRoot = path.join(TMP, 'lint-thin')
+fs.mkdirSync(path.join(lintThinRoot, 'skills', 'demo'), { recursive: true })
+fs.writeFileSync(path.join(lintThinRoot, 'plugin.json'), JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', name: 'lint-thin' }))
+fs.writeFileSync(
+  path.join(lintThinRoot, 'skills/demo/SKILL.md'),
+  '---\nname: demo\ndescription: A deliberately thin skill body used to verify lint quality findings.\n---\n\nShort body only.\n'
+)
+const lintThinRes = jsonExit(run('lint.js', [lintThinRoot, '--json']))
+assert('thin skill produces findings and exits 1', lintThinRes.status === 1 && lintThinRes.data.clean === false)
+assert(
+  'thin body finding reported',
+  lintThinRes.data.findings.some((f) => f.skill === 'demo' && f.field === 'body' && f.message.includes('body is thin')),
+  JSON.stringify(lintThinRes.data.findings)
+)
+assert(
+  'missing sections finding reported',
+  lintThinRes.data.findings.some((f) => f.field === 'body' && f.message.includes('no ## section headings')),
+  JSON.stringify(lintThinRes.data.findings)
+)
+assert(
+  'missing title finding reported',
+  lintThinRes.data.findings.some((f) => f.field === 'title' && f.message.includes('no # title heading')),
+  JSON.stringify(lintThinRes.data.findings)
+)
+
+const lintAssetRoot = path.join(TMP, 'lint-asset')
+fs.mkdirSync(path.join(lintAssetRoot, 'skills', 'demo', 'scripts'), { recursive: true })
+fs.writeFileSync(path.join(lintAssetRoot, 'plugin.json'), JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', name: 'lint-asset' }))
+fs.writeFileSync(path.join(lintAssetRoot, 'skills/demo/scripts/orphan.sh'), '#!/bin/sh\necho unused\n')
+fs.writeFileSync(
+  path.join(lintAssetRoot, 'skills/demo/SKILL.md'),
+  '---\nname: demo\ndescription: A well-formed skill body that keeps the linter satisfied except for the orphan asset.\n---\n\n# Demo\n\n## When to use\n\n- Trigger one\n- Trigger two\n- Trigger three for good measure\n\n## Instructions\n\n1. Step one with a concrete detail\n2. Step two with another concrete detail\n3. Step three to make the body substantial enough\n'
+)
+const lintAssetRes = jsonExit(run('lint.js', [lintAssetRoot, '--json']))
+assert(
+  'unreferenced bundled file reported',
+  lintAssetRes.status === 1 && lintAssetRes.data.findings.some((f) => f.field === 'assets' && f.message.includes("'scripts/orphan.sh' is never referenced")),
+  JSON.stringify(lintAssetRes.data.findings)
+)
+
+const lintSkillDir = jsonExit(run('lint.js', [path.join(lintAssetRoot, 'skills', 'demo'), '--json']))
+assert('single skill directory accepted', lintSkillDir.data.linted === 1 && lintSkillDir.data.findings.length === 1, JSON.stringify(lintSkillDir.data))
+
+const lintNoSkills = jsonExit(run('lint.js', [path.join(TMP, 'no-server'), '--json']))
+assert('plugin without skills lints clean', lintNoSkills.status === 0 && lintNoSkills.data.linted === 0 && lintNoSkills.data.clean === true)
+
+console.log('lint examples')
+for (const ex of ['hello-plugin', 'code-review-assistant', 'git-release-notes']) {
+  const res = jsonExit(run('lint.js', [path.join(ROOT, 'examples', ex), '--json']))
+  assert(`examples/${ex} lints clean`, res.status === 0 && res.data.clean === true, JSON.stringify(res.data))
+}
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail === 0 ? 0 : 1)

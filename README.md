@@ -46,6 +46,9 @@ node scripts/doctor.js                # 人类可读输出
 node scripts/doctor.js --json         # 完整 JSON 报告
 node scripts/doctor.js --target /opt/agent-plugins  # 追加扫描自定义目录
 
+# Skill 内容质量 lint（客观指标：正文厚度、章节结构、列表/代码块、标题、未引用的捆绑文件）
+node scripts/lint.js ./plugins/my-plugin    # 插件根目录或单个 skill 目录均可
+
 # 指定 MCP 传输类型（stdio / streamable-http / sse）
 node scripts/create.js my-plugin --mcp --mcp-type streamable-http --mcp-url https://example.com/mcp
 ```
@@ -58,6 +61,7 @@ node scripts/bin/agent-plugin.js validate ./plugins/my-plugin
 node scripts/bin/agent-plugin.js pack ./plugins/my-plugin -o ./dist
 node scripts/bin/agent-plugin.js install ./dist/my-plugin-0.1.0.tgz --target claude
 node scripts/bin/agent-plugin.js doctor
+node scripts/bin/agent-plugin.js lint ./plugins/my-plugin
 ```
 
 ## 校验能力
@@ -72,8 +76,8 @@ node scripts/bin/agent-plugin.js doctor
 
 ## 质量保障
 
-- 行为测试：`npm test`（61 项，覆盖 create/validate/pack/install/doctor + 三示例插件 + strict/长路径/tar-slip/semver/glob/extensions/规范版本 回归）
-- 契约测试：断言各脚本的 JSON 输出结构，防止静默破坏调用方
+- 行为测试：`npm test`（覆盖 create/validate/pack/install/doctor/lint + 三示例插件 + strict/长路径/tar-slip/semver/glob/extensions/规范版本 回归）
+- 契约测试：断言各脚本的 JSON 输出结构，防止静默破坏调用方；示例插件同时要求 lint 全清
 - CI：GitHub Actions 在 Node 18/20/22（ubuntu/windows）上自动跑语法检查、测试、示例校验与打包闭环验证
 - 发布：推送 `v*` tag 自动 npm publish + GitHub Release（附 tarball 与 sha256 校验和，见 [release.yml](.github/workflows/release.yml)）
 
@@ -87,6 +91,7 @@ scripts/
   pack.js                 # tarball 打包引擎
   install.js              # 客户端安装引擎
   doctor.js               # 环境与已装插件诊断引擎
+  lint.js                 # Skill 内容质量 lint（客观指标）
   lib/                    # 共享库（schema/约束/frontmatter/路径安全）
 schemas/                  # plugin.json 与 mcp.json JSON Schema
 references/               # 规范要点参考文档（progressive disclosure）

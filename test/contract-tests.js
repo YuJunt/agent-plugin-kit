@@ -98,5 +98,11 @@ assert('install: error shape when failed', (() => {
   return Array.isArray(bad.data.errors) && bad.data.errors.every((e) => typeof e.field === 'string' && typeof e.message === 'string')
 })(), i.stderr)
 
+console.log('lint output contract')
+const l = jsonExit(run('lint.js', [pluginRoot, '--json']))
+assert('lint: clean boolean', typeof l.data.clean === 'boolean')
+assert('lint: linted number', typeof l.data.linted === 'number')
+assert('lint: findings array', Array.isArray(l.data.findings) && l.data.findings.every((f) => typeof f.skill === 'string' && typeof f.field === 'string' && typeof f.message === 'string'))
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail === 0 ? 0 : 1)
