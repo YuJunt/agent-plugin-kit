@@ -19,6 +19,7 @@ An Agent Plugin is a self-contained directory with a `plugin.json` manifest and 
 - User wants to scaffold a new Agent Plugin
 - User wants to validate an existing plugin directory against the 1.0.0 spec
 - User wants to package a plugin for distribution
+- User wants to install a plugin (directory or archive) into a client
 - User asks about plugin structure, manifest fields, or MCP configuration
 
 ## Core workflow
@@ -42,6 +43,12 @@ Run the bundled Node.js scripts from the skill root. All scripts are zero-depend
    node scripts/pack.js <plugin-root> -o <output-dir>
    ```
    Produces `<name>-<version>.tgz`. Options: `--dry-run` (list files without writing), `--verify` (unpack + re-validate the archive), `--include <globs>` / `--exclude <globs>` (filter packaged files).
+
+4. **Install** a plugin into a client plugin directory:
+   ```
+   node scripts/install.js <plugin-root-or-archive> --target <claude|cursor|path>
+   ```
+   Accepts a plugin directory or a `.tgz` produced by pack. Validates first (invalid plugins are refused), copies to `<target>/<plugin-name>/`. Options: `--force` (replace an already-installed plugin).
 
 ## Plugin structure (the portable contract)
 

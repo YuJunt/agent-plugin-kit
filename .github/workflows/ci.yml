@@ -25,6 +25,7 @@ jobs:
           for f in scripts/*.js scripts/lib/*.js scripts/bin/*.js test/*.js; do
             node --check "$f"
           done
+        shell: bash
 
       - name: Run test suite (behavior + contract)
         run: npm test

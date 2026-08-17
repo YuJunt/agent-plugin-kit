@@ -36,6 +36,11 @@ node scripts/pack.js ./plugins/my-plugin --dry-run          # 仅列出将打包
 node scripts/pack.js ./plugins/my-plugin --verify -o ./dist # 打包后解包并重新校验
 node scripts/pack.js ./plugins/my-plugin --exclude 'docs/**' -o ./dist
 
+# 安装到客户端插件目录（目录或 .tgz 均可；安装前自动校验）
+node scripts/install.js ./plugins/my-plugin --target claude
+node scripts/install.js ./dist/my-plugin-0.1.0.tgz --target /opt/agent-plugins
+node scripts/install.js ./plugins/my-plugin --target claude --force  # 覆盖已安装版本
+
 # 指定 MCP 传输类型（stdio / streamable-http / sse）
 node scripts/create.js my-plugin --mcp --mcp-type streamable-http --mcp-url https://example.com/mcp
 ```
@@ -46,6 +51,7 @@ node scripts/create.js my-plugin --mcp --mcp-type streamable-http --mcp-url http
 node scripts/bin/agent-plugin.js create my-plugin --full -d ./plugins
 node scripts/bin/agent-plugin.js validate ./plugins/my-plugin
 node scripts/bin/agent-plugin.js pack ./plugins/my-plugin -o ./dist
+node scripts/bin/agent-plugin.js install ./dist/my-plugin-0.1.0.tgz --target claude
 ```
 
 ## 校验能力
@@ -60,7 +66,7 @@ node scripts/bin/agent-plugin.js pack ./plugins/my-plugin -o ./dist
 
 ## 质量保障
 
-- 行为测试：`npm test`（43 项，覆盖 create/validate/pack + 三示例插件 + strict/长路径/tar-slip/semver/glob 回归）
+- 行为测试：`npm test`（53 项，覆盖 create/validate/pack/install + 三示例插件 + strict/长路径/tar-slip/semver/glob 回归）
 - 契约测试：断言三个脚本的 JSON 输出结构，防止静默破坏调用方
 - CI：GitHub Actions 在 Node 18/20/22 上自动跑语法检查、测试、示例校验与打包闭环验证
 
@@ -72,6 +78,7 @@ scripts/
   create.js               # 脚手架生成引擎
   validate.js             # 规范验证引擎
   pack.js                 # tarball 打包引擎
+  install.js              # 客户端安装引擎
   lib/                    # 共享库（schema/约束/frontmatter/路径安全）
 schemas/                  # plugin.json 与 mcp.json JSON Schema
 references/               # 规范要点参考文档（progressive disclosure）

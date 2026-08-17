@@ -8,6 +8,7 @@ const scripts = {
   create: 'create.js',
   validate: 'validate.js',
   pack: 'pack.js',
+  install: 'install.js',
 }
 
 const subcommand = process.argv[2]
@@ -22,6 +23,7 @@ Commands:
   create    Scaffold a new Agent Plugin skeleton
   validate  Validate a plugin directory against the 1.0.0 spec
   pack      Package a valid plugin into a .tgz tarball
+  install   Install a plugin into a client plugin directory
 
 Run 'agent-plugin <command> --help' for command details.
 `)

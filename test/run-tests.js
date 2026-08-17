@@ -13,10 +13,11 @@ const TMP = fs.mkdtempSync(path.join(os.tmpdir(), 'apk-test-'))
 let pass = 0
 let fail = 0
 
-function run(script, args, cwd) {
+function run(script, args, cwd, env) {
   return spawnSync(process.execPath, [path.join(SCRIPTS, script), ...args], {
     cwd: cwd || ROOT,
     encoding: 'utf8',
+    env: env || process.env,
   })
 }
 
@@ -278,6 +279,50 @@ assert(
   'a/**/b matches zero and multiple segments',
   globInclude.data.files.includes('docs/keep.md') && globInclude.data.files.includes('docs/sub/keep.md') && globInclude.data.files.includes('plugin.json') && !globInclude.data.files.includes('draft.md'),
   globInclude.data.files.join(',')
+)
+
+console.log('install.js')
+const clientDir = path.join(TMP, 'client-plugins')
+const instRes = jsonExit(run('install.js', [createdRoot, '--target', clientDir]))
+assert(
+  'install from directory exits 0',
+  instRes.status === 0 && instRes.data && instRes.data.installed === true,
+  instRes.stderr
+)
+const instDest = path.join(clientDir, 'my-plugin')
+assert('destination named after plugin', fs.existsSync(path.join(instDest, 'plugin.json')) && fs.existsSync(path.join(instDest, 'skills/alpha/SKILL.md')))
+const instValid = jsonExit(run('validate.js', [instDest, '--json']))
+assert('installed plugin validates', instValid.status === 0 && instValid.data.valid === true, instValid.stderr)
+
+const dupInst = jsonExit(run('install.js', [createdRoot, '--target', clientDir]))
+assert('reinstall without --force refused', dupInst.status === 1 && dupInst.data.errors.some((e) => e.message.includes('already installed')))
+const forceInst = jsonExit(run('install.js', [createdRoot, '--target', clientDir, '--force']))
+assert('reinstall with --force succeeds', forceInst.status === 0 && forceInst.data.installed === true, forceInst.stderr)
+
+const archiveSource = path.join(packDir, 'my-plugin-0.1.0.tgz')
+const tgzInst = jsonExit(run('install.js', [archiveSource, '--target', path.join(TMP, 'client-tgz')]))
+assert(
+  'install from tgz archive',
+  tgzInst.status === 0 && tgzInst.data.installed === true && fs.existsSync(path.join(TMP, 'client-tgz', 'my-plugin', 'plugin.json')),
+  tgzInst.stderr
+)
+
+const noTarget = jsonExit(run('install.js', [createdRoot]))
+assert('missing target rejected', noTarget.status === 1 && noTarget.data.errors.some((e) => e.field === 'target'))
+
+const invalidInst = jsonExit(run('install.js', [badManifestRoot, '--target', path.join(TMP, 'client-bad')]))
+assert('invalid plugin refused', invalidInst.status === 1 && invalidInst.data.errors.some((e) => e.message.includes('not valid')))
+
+const missingSrc = jsonExit(run('install.js', [path.join(TMP, 'no-such-plugin'), '--target', clientDir]))
+assert('missing source rejected', missingSrc.status === 1 && missingSrc.data.errors.some((e) => e.field === 'source'))
+
+const fakeHome = path.join(TMP, 'fake-home')
+const homeEnv = { ...process.env, HOME: fakeHome, USERPROFILE: fakeHome }
+const claudeInst = jsonExit(run('install.js', [createdRoot, '--target', 'claude'], null, homeEnv))
+assert(
+  'claude target maps to ~/.claude/plugins',
+  claudeInst.status === 0 && claudeInst.data.destination === path.join(fakeHome, '.claude', 'plugins', 'my-plugin'),
+  JSON.stringify(claudeInst.data)
 )
 
 console.log(`\n${pass} passed, ${fail} failed`)

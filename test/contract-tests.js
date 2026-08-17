@@ -85,5 +85,18 @@ const d = jsonExit(run('pack.js', [pluginRoot, '--dry-run']))
 assert('dry-run: dryRun true', d.data.dryRun === true)
 assert('dry-run: files array', Array.isArray(d.data.files))
 
+console.log('install output contract')
+const instDir = path.join(TMP, 'install-target')
+const i = jsonExit(run('install.js', [pluginRoot, '--target', instDir]))
+assert('install: installed boolean', typeof i.data.installed === 'boolean')
+assert('install: plugin string', typeof i.data.plugin === 'string')
+assert('install: version string', typeof i.data.version === 'string')
+assert('install: destination string', typeof i.data.destination === 'string')
+assert('install: files number', typeof i.data.files === 'number')
+assert('install: error shape when failed', (() => {
+  const bad = jsonExit(run('install.js', [pluginRoot]))
+  return Array.isArray(bad.data.errors) && bad.data.errors.every((e) => typeof e.field === 'string' && typeof e.message === 'string')
+})(), i.stderr)
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail === 0 ? 0 : 1)

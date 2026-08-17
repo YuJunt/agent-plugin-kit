@@ -313,7 +313,7 @@ Options:
   process.exit(result.packed || result.dryRun ? 0 : 1)
 }
 
-module.exports = { pack, extractTar, verifyArchive, globToRegExp }
+module.exports = { pack, extractTar, verifyArchive, globToRegExp, collectFiles }
 
 if (require.main === module) {
   main()
