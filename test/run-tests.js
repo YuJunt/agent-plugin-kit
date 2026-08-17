@@ -325,5 +325,45 @@ assert(
   JSON.stringify(claudeInst.data)
 )
 
+console.log('regression: extensions consistency')
+const extDeclaredRoot = path.join(TMP, 'ext-declared')
+fs.mkdirSync(extDeclaredRoot, { recursive: true })
+fs.writeFileSync(
+  path.join(extDeclaredRoot, 'plugin.json'),
+  JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', name: 'ext-declared', extensions: { 'com.acme.ide': { theme: 'dark' } } })
+)
+const extDeclaredRes = jsonExit(run('validate.js', [extDeclaredRoot, '--json']))
+assert(
+  'declared extension without directory warns',
+  extDeclaredRes.status === 0 &&
+    extDeclaredRes.data.manifest.warnings.some((w) => w.message.includes("no 'com.acme.ide/' directory")),
+  JSON.stringify(extDeclaredRes.data && extDeclaredRes.data.manifest.warnings)
+)
+
+const extDirOnlyRoot = path.join(TMP, 'ext-dir-only')
+fs.mkdirSync(path.join(extDirOnlyRoot, 'com.acme.ide'), { recursive: true })
+fs.writeFileSync(
+  path.join(extDirOnlyRoot, 'plugin.json'),
+  JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', name: 'ext-dir-only' })
+)
+fs.writeFileSync(path.join(extDirOnlyRoot, 'com.acme.ide', 'settings.json'), '{}')
+const extDirOnlyRes = jsonExit(run('validate.js', [extDirOnlyRoot, '--json']))
+assert(
+  'namespace directory without declaration warns',
+  extDirOnlyRes.status === 0 &&
+    extDirOnlyRes.data.manifest.warnings.some((w) => w.message.includes('not declared in manifest extensions')),
+  JSON.stringify(extDirOnlyRes.data && extDirOnlyRes.data.manifest.warnings)
+)
+
+const extOkRoot = path.join(TMP, 'ext-ok')
+fs.mkdirSync(path.join(extOkRoot, 'com.acme.ide'), { recursive: true })
+fs.writeFileSync(
+  path.join(extOkRoot, 'plugin.json'),
+  JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', name: 'ext-ok', extensions: { 'com.acme.ide': { theme: 'dark' } } })
+)
+fs.writeFileSync(path.join(extOkRoot, 'com.acme.ide', 'settings.json'), '{}')
+const extOkRes = jsonExit(run('validate.js', [extOkRoot, '--json', '--strict']))
+assert('consistent extension passes strict', extOkRes.status === 0, JSON.stringify(extOkRes.data && extOkRes.data.manifest.warnings))
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail === 0 ? 0 : 1)

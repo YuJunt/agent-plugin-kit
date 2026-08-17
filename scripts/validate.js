@@ -53,6 +53,50 @@ function isDir(p) {
   }
 }
 
+// Reverse-DNS-looking namespace names, e.g. com.example.client (>= 2 dot-separated segments)
+const NAMESPACE_DIR_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*(?:\.[a-z0-9]+(?:-[a-z0-9]+)*)+$/
+
+function validateExtensionConsistency(root, manifest) {
+  const warnings = []
+  const declared =
+    manifest.extensions && typeof manifest.extensions === 'object' && !Array.isArray(manifest.extensions)
+      ? Object.keys(manifest.extensions)
+      : []
+
+  for (const ns of declared) {
+    if (!NAMESPACE_DIR_RE.test(ns)) {
+      warnings.push({
+        field: `extensions.${ns}`,
+        message: `extension namespace '${ns}' does not look like a reverse-DNS client namespace (e.g. com.example.client)`,
+      })
+    }
+    if (!isDir(path.join(root, ns))) {
+      warnings.push({
+        field: `extensions.${ns}`,
+        message: `manifest declares extension '${ns}' but no '${ns}/' directory exists at the plugin root`,
+      })
+    }
+  }
+
+  let entries = []
+  try {
+    entries = fs.readdirSync(root)
+  } catch {
+    return warnings
+  }
+  for (const entry of entries) {
+    if (!NAMESPACE_DIR_RE.test(entry)) continue
+    if (!isDir(path.join(root, entry))) continue
+    if (!declared.includes(entry)) {
+      warnings.push({
+        field: 'extensions',
+        message: `namespace directory '${entry}/' exists but is not declared in manifest extensions`,
+      })
+    }
+  }
+  return warnings
+}
+
 function validateManifest(root) {
   const report = { valid: false, errors: [], warnings: [], schema: null }
   const manifestPath = path.join(root, 'plugin.json')
@@ -92,6 +136,10 @@ function validateManifest(root) {
   for (const c of constraintErrors) {
     if (c.level === 'warning') report.warnings.push({ field: c.field, message: c.message })
     else report.errors.push({ field: c.field, message: c.message })
+  }
+
+  for (const w of validateExtensionConsistency(root, parsed.data)) {
+    report.warnings.push(w)
   }
 
   report.valid = report.errors.length === 0

@@ -58,7 +58,7 @@ node scripts/bin/agent-plugin.js install ./dist/my-plugin-0.1.0.tgz --target cla
 
 `validate` 覆盖 Agent Plugins 1.0.0 规范的关键约束：
 
-- `plugin.json`：闭集字段、必填项、插件名约束（§5.2/5.5）、version semver 建议告警
+- `plugin.json`：闭集字段、必填项、插件名约束（§5.2/5.5）、version semver 建议告警、extensions 与命名空间目录一致性
 - `skills/`：SKILL.md frontmatter、skill 命名与目录匹配、引用文件完整性、`allowed-tools` 校验、未知字段警告
 - `mcp.json`：三传输类型（stdio/streamable-http/sse）、url 占位符一致性、路径与占位符约束、command 文件存在性
 - 路径安全：`../` 逃逸与 symlink 逃逸检测（§4.1）
@@ -66,9 +66,10 @@ node scripts/bin/agent-plugin.js install ./dist/my-plugin-0.1.0.tgz --target cla
 
 ## 质量保障
 
-- 行为测试：`npm test`（53 项，覆盖 create/validate/pack/install + 三示例插件 + strict/长路径/tar-slip/semver/glob 回归）
-- 契约测试：断言三个脚本的 JSON 输出结构，防止静默破坏调用方
-- CI：GitHub Actions 在 Node 18/20/22 上自动跑语法检查、测试、示例校验与打包闭环验证
+- 行为测试：`npm test`（56 项，覆盖 create/validate/pack/install + 三示例插件 + strict/长路径/tar-slip/semver/glob/extensions 回归）
+- 契约测试：断言各脚本的 JSON 输出结构，防止静默破坏调用方
+- CI：GitHub Actions 在 Node 18/20/22（ubuntu/windows）上自动跑语法检查、测试、示例校验与打包闭环验证
+- 发布：推送 `v*` tag 自动 npm publish + GitHub Release（附 tarball 与 sha256 校验和，见 [release.yml](.github/workflows/release.yml)）
 
 ## 项目结构
 
