@@ -46,8 +46,6 @@ function parseArgs(argv) {
 const EXCLUDE_DIRS = new Set(['.git', 'node_modules', '.hg', '.svn', 'dist', 'build'])
 const EXCLUDE_FILES = new Set(['.DS_Store', 'Thumbs.db'])
 
-const CORE_FILES = (root) => new Set(['plugin.json', 'mcp.json', 'skills'])
-
 function globToRegExp(glob) {
   let out = ''
   for (let i = 0; i < glob.length; i += 1) {
@@ -74,7 +72,7 @@ function matchesAny(rel, patterns) {
   return patterns.some((p) => globToRegExp(p).test(rel))
 }
 
-function isCore(rel, root) {
+function isCore(rel) {
   if (rel === 'plugin.json' || rel === 'mcp.json') return true
   if (/^skills\/[^/]+\/SKILL\.md$/.test(rel)) return true
   return false
@@ -96,7 +94,7 @@ function collectFiles(root, opts) {
       } else if (stat.isFile()) {
         if (EXCLUDE_FILES.has(entry)) continue
         if (exclude && exclude.length > 0 && matchesAny(rel, exclude)) continue
-        if (include && include.length > 0 && !isCore(rel, root) && !matchesAny(rel, include)) continue
+        if (include && include.length > 0 && !isCore(rel) && !matchesAny(rel, include)) continue
         files.push({ abs, rel, size: stat.size, mtime: Math.floor(stat.mtimeMs / 1000) })
       }
     }
@@ -106,10 +104,36 @@ function collectFiles(root, opts) {
   return files
 }
 
+const TAR_NAME_LIMIT = 100
+const TAR_PREFIX_LIMIT = 155
+
+function splitLongName(name) {
+  // Split at a '/' boundary so prefix <= 155 chars and name <= 100 chars (ustar).
+  let best = -1
+  let pos = name.indexOf('/')
+  while (pos !== -1) {
+    if (pos <= TAR_PREFIX_LIMIT && name.length - pos - 1 <= TAR_NAME_LIMIT) best = pos
+    pos = name.indexOf('/', pos + 1)
+  }
+  return best
+}
+
 function toTarHeader(file) {
-  const name = file.rel
   const buffer = Buffer.alloc(512)
+  let name = file.rel
+  let prefix = ''
+  if (name.length > TAR_NAME_LIMIT) {
+    const split = splitLongName(name)
+    if (split === -1) {
+      throw new Error(
+        `path '${name}' is too long for the ustar format (no valid prefix/name split; max 256 chars with a '/' boundary within the last 100)`
+      )
+    }
+    prefix = name.slice(0, split)
+    name = name.slice(split + 1)
+  }
   buffer.write(name, 0, 100, 'utf8')
+  buffer.write(prefix, 345, TAR_PREFIX_LIMIT, 'utf8')
   const mode = (0o644).toString(8).padStart(7, '0')
   buffer.write(mode, 100, 7, 'utf8')
   const uid = '0000000'
@@ -122,7 +146,6 @@ function toTarHeader(file) {
   buffer.write(mtime, 136, 11, 'utf8')
   buffer.write('        ', 148, 8, 'utf8')
   buffer.write('0', 156, 1, 'utf8')
-  buffer.write(name, 157, 100, 'utf8')
   buffer.write('ustar', 257, 6, 'utf8')
   buffer.write('00', 263, 2, 'utf8')
   let checksum = 0
@@ -168,7 +191,9 @@ function extractTar(tgzBuffer) {
   let offset = 0
   while (offset + 512 <= tar.length) {
     if (tar[offset] === 0) break
-    const name = tar.toString('utf8', offset, offset + 100).replace(/\0.*$/, '').trim()
+    const namePart = tar.toString('utf8', offset, offset + 100).replace(/\0.*$/, '').trim()
+    const prefixPart = tar.toString('utf8', offset + 345, offset + 345 + TAR_PREFIX_LIMIT).replace(/\0.*$/, '').trim()
+    const name = prefixPart ? `${prefixPart}/${namePart}` : namePart
     const sizeStr = tar.toString('utf8', offset + 124, offset + 136).replace(/\0.*$/, '').trim()
     const size = sizeStr ? parseInt(sizeStr, 8) : 0
     const data = Buffer.from(tar.slice(offset + 512, offset + 512 + size))
@@ -184,7 +209,11 @@ function verifyArchive(archive, validateFn) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'apk-verify-'))
   try {
     for (const f of files) {
-      const dest = path.join(tmp, f.name)
+      // tar-slip protection: every entry must unpack inside tmp
+      const dest = path.resolve(tmp, f.name)
+      if (dest !== tmp && !dest.startsWith(tmp + path.sep)) {
+        throw new Error(`archive entry '${f.name}' escapes the extraction directory (tar-slip)`)
+      }
       fs.mkdirSync(path.dirname(dest), { recursive: true })
       fs.writeFileSync(dest, f.data)
     }

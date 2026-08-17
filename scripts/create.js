@@ -19,7 +19,6 @@ function parseArgs(argv) {
     full: false,
     minimal: false,
     dir: process.cwd(),
-    noInput: false,
     help: false,
   }
   const positional = []
@@ -57,9 +56,6 @@ function parseArgs(argv) {
       case '--dir':
         i += 1
         args.dir = argv[i]
-        break
-      case '--no-input':
-        args.noInput = true
         break
       case '-h':
       case '--help':
@@ -103,7 +99,6 @@ Options:
       --full          Complete skeleton (full manifest + skills + mcp + server.js + LICENSE + CHANGELOG)
       --minimal       Minimal skeleton (manifest + skills placeholder)
   -d, --dir <path>    Output directory (default: current directory)
-      --no-input      Non-interactive mode
   -h, --help          Show this help
 
 Examples:

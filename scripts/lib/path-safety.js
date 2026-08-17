@@ -57,20 +57,4 @@ function checkPackagePath(root, candidate) {
   return issues
 }
 
-function checkConfigPath(root, fieldPath, value, isCommand) {
-  if (typeof value !== 'string' || value === '') {
-    return []
-  }
-  if (value.startsWith('${PLUGIN_ROOT}') || value.startsWith('${PLUGIN_DATA}')) {
-    return []
-  }
-  if (isCommand) {
-    if (value.startsWith('./')) {
-      return checkPackagePath(root, value)
-    }
-    return []
-  }
-  return []
-}
-
-module.exports = { resolveWithin, checkPackagePath, checkConfigPath }
+module.exports = { resolveWithin, checkPackagePath }

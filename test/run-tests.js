@@ -181,5 +181,55 @@ for (const ex of ['hello-plugin', 'code-review-assistant', 'git-release-notes'])
   assert(`examples/${ex} is valid`, res.status === 0 && res.data && res.data.valid === true, res.stderr)
 }
 
+console.log('regression: --strict exit codes')
+const strictWarnRoot = path.join(TMP, 'strict-warn')
+fs.mkdirSync(strictWarnRoot, { recursive: true })
+fs.writeFileSync(
+  path.join(strictWarnRoot, 'plugin.json'),
+  JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', name: 'strict-warn', whoops: 1 })
+)
+const laxRes = jsonExit(run('validate.js', [strictWarnRoot, '--json']))
+assert('warnings only: non-strict exits 0', laxRes.status === 0 && laxRes.data.valid === true && laxRes.data.summary.warnings === 1)
+const strictWarnRes = jsonExit(run('validate.js', [strictWarnRoot, '--json', '--strict']))
+assert('warnings only: strict exits 1', strictWarnRes.status === 1, `got ${strictWarnRes.status}`)
+const strictCleanRes = jsonExit(run('validate.js', [path.join(ROOT, 'examples', 'hello-plugin'), '--json', '--strict']))
+assert('clean plugin: strict exits 0', strictCleanRes.status === 0, `got ${strictCleanRes.status}`)
+const strictInvalidRes = jsonExit(run('validate.js', [badManifestRoot, '--json', '--strict']))
+assert('invalid plugin: strict still exits 1', strictInvalidRes.status === 1)
+
+console.log('regression: long tar paths (ustar prefix)')
+const longSkill = 'a'.repeat(40)
+const longFile = 'b'.repeat(50) + '.md'
+const longRoot = path.join(TMP, 'long-plugin')
+fs.mkdirSync(path.join(longRoot, 'skills', longSkill, 'references'), { recursive: true })
+fs.writeFileSync(path.join(longRoot, 'plugin.json'), JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', name: 'long-plugin', version: '0.1.0' }))
+fs.writeFileSync(path.join(longRoot, 'skills', longSkill, 'SKILL.md'), `---\nname: ${longSkill}\ndescription: A skill whose packaged asset path exceeds 100 chars to exercise ustar prefix handling in pack.\n---\n\nSee references/${longFile}.\n`)
+fs.writeFileSync(path.join(longRoot, 'skills', longSkill, 'references', longFile), 'Reference content.\n')
+const longRel = `skills/${longSkill}/references/${longFile}`
+assert('fixture path exceeds 100 chars', longRel.length > 100)
+const longPackRes = jsonExit(run('pack.js', [longRoot, '--verify', '-o', path.join(TMP, 'dist-long')]))
+assert('long path pack + verify round-trip', longPackRes.status === 0 && longPackRes.data.verify && longPackRes.data.verify.valid === true, longPackRes.stderr)
+const { extractTar } = require(path.join(SCRIPTS, 'pack.js'))
+const longNames = extractTar(fs.readFileSync(path.join(TMP, 'dist-long', 'long-plugin-0.1.0.tgz'))).map((f) => f.name)
+assert('long path preserved in archive entries', longNames.includes(longRel), longNames.join(','))
+
+console.log('regression: tar-slip protection')
+const zlib = require('zlib')
+const { verifyArchive } = require(path.join(SCRIPTS, 'pack.js'))
+const evilHeader = Buffer.alloc(512)
+evilHeader.write('../evil.txt', 0, 100, 'utf8')
+evilHeader.write((0o644).toString(8).padStart(7, '0'), 100, 7, 'utf8')
+evilHeader.write('00000000000', 124, 11, 'utf8')
+evilHeader.write('0', 156, 1, 'utf8')
+const evilTgz = path.join(TMP, 'evil.tgz')
+fs.writeFileSync(evilTgz, zlib.gzipSync(Buffer.concat([evilHeader, Buffer.alloc(1024)])))
+let tarSlipThrown = false
+try {
+  verifyArchive(evilTgz)
+} catch (e) {
+  tarSlipThrown = e.message.includes('tar-slip')
+}
+assert('escaping archive entry rejected', tarSlipThrown)
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail === 0 ? 0 : 1)

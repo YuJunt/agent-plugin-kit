@@ -60,7 +60,7 @@ node scripts/bin/agent-plugin.js pack ./plugins/my-plugin -o ./dist
 
 ## 质量保障
 
-- 行为测试：`npm test`（30 项，覆盖 create/validate/pack + 三示例插件）
+- 行为测试：`npm test`（38 项，覆盖 create/validate/pack + 三示例插件 + strict 退出码/长路径打包/tar-slip 回归）
 - 契约测试：断言三个脚本的 JSON 输出结构，防止静默破坏调用方
 - CI：GitHub Actions 在 Node 18/20/22 上自动跑语法检查、测试、示例校验与打包闭环验证
 

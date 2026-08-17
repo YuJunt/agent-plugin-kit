@@ -53,12 +53,8 @@ function isDir(p) {
   }
 }
 
-function summarizeIssues(errors, warnings) {
-  return { errors: errors.length, warnings: warnings.length }
-}
-
 function validateManifest(root) {
-  const report = { valid: false, errors: [], warnings: [] }
+  const report = { valid: false, errors: [], warnings: [], schema: null }
   const manifestPath = path.join(root, 'plugin.json')
 
   if (!isFile(manifestPath)) {
@@ -76,6 +72,8 @@ function validateManifest(root) {
     report.errors.push({ field: 'manifest', message: 'plugin.json must contain a top-level JSON object' })
     return report
   }
+
+  if (typeof parsed.data.$schema === 'string') report.schema = parsed.data.$schema
 
   const schemaErrors = validateSchema(parsed.data, pluginSchema, pluginSchema)
   for (const e of schemaErrors) {
@@ -256,7 +254,7 @@ function validate(root) {
   report.skills = skills.skills
   report.skillsWarnings = skills.warnings
 
-  const mcp = validateMcp(root, report.manifest.valid ? readJson(path.join(root, 'plugin.json')).data?.$schema : null)
+  const mcp = validateMcp(root, report.manifest.valid ? report.manifest.schema : null)
   report.mcp = {
     present: mcp.present,
     valid: mcp.valid,
@@ -339,7 +337,8 @@ Options:
       for (const e of s.errors) console.log(`  [mcp-server:${s.name}] ${e.message}`)
     }
   }
-  process.exit(report.valid || (args.strict && report.summary.warnings > 0) ? 0 : 1)
+  const strictFailed = args.strict && report.summary.warnings > 0
+  process.exit(report.valid && !strictFailed ? 0 : 1)
 }
 
 module.exports = { validate }
