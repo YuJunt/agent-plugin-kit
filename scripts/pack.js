@@ -46,23 +46,31 @@ function parseArgs(argv) {
 const EXCLUDE_DIRS = new Set(['.git', 'node_modules', '.hg', '.svn', 'dist', 'build'])
 const EXCLUDE_FILES = new Set(['.DS_Store', 'Thumbs.db'])
 
-function globToRegExp(glob) {
+function segmentToRegExp(seg) {
   let out = ''
-  for (let i = 0; i < glob.length; i += 1) {
-    const ch = glob[i]
-    if (ch === '*') {
-      if (glob[i + 1] === '*') {
-        out += '.*'
-        i += 1
-      } else {
-        out += '[^/]*'
-      }
-    } else if (ch === '?') {
-      out += '[^/]'
-    } else if ('\\^$.|+()[]{}'.includes(ch)) {
-      out += '\\' + ch
+  for (const ch of seg) {
+    if (ch === '*') out += '[^/]*'
+    else if (ch === '?') out += '[^/]'
+    else if ('\\^$.|+()[]{}'.includes(ch)) out += '\\' + ch
+    else out += ch
+  }
+  return out
+}
+
+function globToRegExp(glob) {
+  // Segment-aware glob: a lone '**' segment matches zero or more whole path
+  // segments, so '**/x' matches 'x' and 'a/**/b' matches 'a/b'. Other wildcards
+  // never cross '/'.
+  const segments = glob.split('/')
+  let out = ''
+  for (let i = 0; i < segments.length; i += 1) {
+    const seg = segments[i]
+    const last = i === segments.length - 1
+    if (seg === '**') {
+      out += last ? '.*' : '(?:[^/]+/)*'
     } else {
-      out += ch
+      out += segmentToRegExp(seg)
+      if (!last) out += '/'
     }
   }
   return new RegExp(`^${out}$`)

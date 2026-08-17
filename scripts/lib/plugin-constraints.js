@@ -5,6 +5,8 @@ const MCP_SCHEMA_ID = 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json'
 
 const PLUGIN_NAME_RE = /^(?!.*(--|\.\.))[a-z0-9][a-z0-9.-]*[a-z0-9]$/
 
+const SEMVER_RE = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/
+
 const MANIFEST_FIELDS = new Set([
   '$schema',
   'name',
@@ -70,8 +72,16 @@ function validateManifestObject(manifest) {
     errors.push({ field: 'name', level: 'error', message: err })
   }
 
-  if (manifest.version !== undefined && typeof manifest.version !== 'string') {
-    errors.push({ field: 'version', level: 'error', message: 'version must be a string' })
+  if (manifest.version !== undefined) {
+    if (typeof manifest.version !== 'string') {
+      errors.push({ field: 'version', level: 'error', message: 'version must be a string' })
+    } else if (!SEMVER_RE.test(manifest.version)) {
+      errors.push({
+        field: 'version',
+        level: 'warning',
+        message: `version '${manifest.version}' is not valid Semantic Versioning (expected MAJOR.MINOR.PATCH with optional -prerelease/+build); it is used in the packaged archive name`,
+      })
+    }
   }
   if (manifest.description !== undefined && typeof manifest.description !== 'string') {
     errors.push({ field: 'description', level: 'error', message: 'description must be a string' })

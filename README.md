@@ -52,7 +52,7 @@ node scripts/bin/agent-plugin.js pack ./plugins/my-plugin -o ./dist
 
 `validate` 覆盖 Agent Plugins 1.0.0 规范的关键约束：
 
-- `plugin.json`：闭集字段、必填项、插件名约束（§5.2/5.5）
+- `plugin.json`：闭集字段、必填项、插件名约束（§5.2/5.5）、version semver 建议告警
 - `skills/`：SKILL.md frontmatter、skill 命名与目录匹配、引用文件完整性、`allowed-tools` 校验、未知字段警告
 - `mcp.json`：三传输类型（stdio/streamable-http/sse）、url 占位符一致性、路径与占位符约束、command 文件存在性
 - 路径安全：`../` 逃逸与 symlink 逃逸检测（§4.1）
@@ -60,7 +60,7 @@ node scripts/bin/agent-plugin.js pack ./plugins/my-plugin -o ./dist
 
 ## 质量保障
 
-- 行为测试：`npm test`（38 项，覆盖 create/validate/pack + 三示例插件 + strict 退出码/长路径打包/tar-slip 回归）
+- 行为测试：`npm test`（43 项，覆盖 create/validate/pack + 三示例插件 + strict/长路径/tar-slip/semver/glob 回归）
 - 契约测试：断言三个脚本的 JSON 输出结构，防止静默破坏调用方
 - CI：GitHub Actions 在 Node 18/20/22 上自动跑语法检查、测试、示例校验与打包闭环验证
 

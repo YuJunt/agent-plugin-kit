@@ -231,5 +231,54 @@ try {
 }
 assert('escaping archive entry rejected', tarSlipThrown)
 
+console.log('regression: version semver warning')
+const badVerRoot = path.join(TMP, 'bad-version')
+fs.mkdirSync(badVerRoot, { recursive: true })
+fs.writeFileSync(
+  path.join(badVerRoot, 'plugin.json'),
+  JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', name: 'bad-version', version: '1.0' })
+)
+const badVerRes = jsonExit(run('validate.js', [badVerRoot, '--json']))
+assert(
+  'non-semver version warns but stays valid',
+  badVerRes.status === 0 &&
+    badVerRes.data.valid === true &&
+    badVerRes.data.manifest.warnings.some((w) => w.message.includes('not valid Semantic Versioning')),
+  JSON.stringify(badVerRes.data && badVerRes.data.manifest)
+)
+const strictVerRes = jsonExit(run('validate.js', [badVerRoot, '--json', '--strict']))
+assert('non-semver version fails under --strict', strictVerRes.status === 1)
+const goodVerRoot = path.join(TMP, 'good-version')
+fs.mkdirSync(goodVerRoot, { recursive: true })
+fs.writeFileSync(
+  path.join(goodVerRoot, 'plugin.json'),
+  JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', name: 'good-version', version: '1.2.3-beta.1+build.5' })
+)
+const goodVerRes = jsonExit(run('validate.js', [goodVerRoot, '--json', '--strict']))
+assert('full semver (prerelease+build) passes strict', goodVerRes.status === 0)
+
+console.log('regression: glob ** segment semantics')
+const globRoot = path.join(TMP, 'glob-plugin')
+for (const p of ['docs/sub', 'skills/demo']) fs.mkdirSync(path.join(globRoot, p), { recursive: true })
+fs.writeFileSync(path.join(globRoot, 'plugin.json'), JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', name: 'glob-plugin', version: '0.1.0' }))
+fs.writeFileSync(path.join(globRoot, 'skills/demo/SKILL.md'), '---\nname: demo\ndescription: A fixture skill for testing glob include and exclude semantics in pack.\n---\n\nBody.\n')
+fs.writeFileSync(path.join(globRoot, 'draft.md'), 'root draft\n')
+fs.writeFileSync(path.join(globRoot, 'docs/draft.md'), 'docs draft\n')
+fs.writeFileSync(path.join(globRoot, 'docs/sub/draft.md'), 'nested draft\n')
+fs.writeFileSync(path.join(globRoot, 'docs/keep.md'), 'docs keep\n')
+fs.writeFileSync(path.join(globRoot, 'docs/sub/keep.md'), 'nested keep\n')
+const globExclude = jsonExit(run('pack.js', [globRoot, '--dry-run', '--exclude', '**/draft.md']))
+assert(
+  '**/x excludes root and nested matches',
+  globExclude.data.files.includes('docs/keep.md') && !globExclude.data.files.includes('draft.md') && !globExclude.data.files.includes('docs/draft.md') && !globExclude.data.files.includes('docs/sub/draft.md'),
+  globExclude.data.files.join(',')
+)
+const globInclude = jsonExit(run('pack.js', [globRoot, '--dry-run', '--include', 'docs/**/keep.md']))
+assert(
+  'a/**/b matches zero and multiple segments',
+  globInclude.data.files.includes('docs/keep.md') && globInclude.data.files.includes('docs/sub/keep.md') && globInclude.data.files.includes('plugin.json') && !globInclude.data.files.includes('draft.md'),
+  globInclude.data.files.join(',')
+)
+
 console.log(`\n${pass} passed, ${fail} failed`)
 process.exit(fail === 0 ? 0 : 1)

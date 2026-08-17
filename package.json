@@ -4,6 +4,14 @@
   "description": "An Agent Skill for creating, validating, and packaging Agent Plugins (Agent Plugins 1.0.0 specification). Zero-dependency Node.js scripts.",
   "license": "MIT",
   "type": "commonjs",
+  "homepage": "https://github.com/YuJunt/agent-plugin-kit#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/YuJunt/agent-plugin-kit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/YuJunt/agent-plugin-kit/issues"
+  },
   "bin": {
     "agent-plugin": "scripts/bin/agent-plugin.js"
   },
