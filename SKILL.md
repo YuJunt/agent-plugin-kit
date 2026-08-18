@@ -5,7 +5,7 @@ license: MIT
 compatibility: Requires Node.js 18+ (scripts use only built-in modules, no npm dependencies)
 metadata:
   author: YuJunt
-  version: "1.2.0"
+  version: "1.3.0"
 ---
 
 # Agent Plugin Kit
