@@ -163,16 +163,28 @@ function validateMcpUrl(url) {
   return []
 }
 
-function validateHeaderNames(headers) {
+// RFC 9110 §5.1 token: tchar = "!" / "#" / "$" / "%" / "&" / "'" / "*" / "+" / "-" / "." / "^" / "_" / "`" / "|" / "~" / DIGIT / ALPHA
+const HEADER_NAME_RE = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/
+// field-value (RFC 9110): empty, or starts/ends with a visible char (SP/HTAB only in the middle)
+const HEADER_VALUE_RE = /^(?:[\x21-\x7e\x80-\xff][\t \x21-\x7e\x80-\xff]*[\x21-\x7e\x80-\xff]|[\x21-\x7e\x80-\xff])?$/
+
+function validateHeaders(name, headers) {
+  const errors = []
   const seen = new Set()
-  for (const name of Object.keys(headers)) {
-    const lower = name.toLowerCase()
+  for (const [headerName, value] of Object.entries(headers)) {
+    const lower = headerName.toLowerCase()
     if (seen.has(lower)) {
-      return [`duplicate header name '${name}' under different casing`]
+      errors.push(`duplicate header name '${headerName}' under different casing`)
     }
     seen.add(lower)
+    if (!HEADER_NAME_RE.test(headerName)) {
+      errors.push(`header name '${headerName}' is not a valid HTTP field name (RFC 9110 token)`)
+    }
+    if (typeof value === 'string' && !HEADER_VALUE_RE.test(value)) {
+      errors.push(`header value for '${headerName}' is not a valid HTTP field value (control characters or leading/trailing whitespace)`)
+    }
   }
-  return []
+  return errors.map((message) => ({ field: `mcpServers.${name}.headers`, level: 'error', message }))
 }
 
 function validateCwd(cwd) {
@@ -242,9 +254,7 @@ function validateMcpServer(name, server) {
             errors.push({ field: `mcpServers.${name}.headers.${k}`, level: 'error', message: 'header value must be a string' })
           }
         }
-        for (const err of validateHeaderNames(server.headers)) {
-          errors.push({ field: `mcpServers.${name}.headers`, level: 'error', message: err })
-        }
+        errors.push(...validateHeaders(name, server.headers))
       }
     }
     for (const key of Object.keys(server)) {

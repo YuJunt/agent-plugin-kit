@@ -38,7 +38,7 @@ Rules:
 |-------|----------|-------------|
 | `type` | Yes | `"streamable-http"` |
 | `url` | Yes | Absolute HTTP(S) URL; no userinfo, no fragment; non-loopback must be HTTPS |
-| `headers` | No | object of strings; no duplicate names under different casing |
+| `headers` | No | object of strings; names must be valid HTTP field names (RFC 9110 token), values must not contain control characters or leading/trailing whitespace, no duplicate names under different casing |
 
 ### sse (legacy HTTP+SSE)
 

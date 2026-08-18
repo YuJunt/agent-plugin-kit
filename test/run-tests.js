@@ -154,6 +154,36 @@ fs.writeFileSync(
 const phOkRes = jsonExit(run('validate.js', [phOkRoot, '--json']))
 assert('valid placeholder in url accepted', phOkRes.status === 0 && phOkRes.data && phOkRes.data.valid === true, phOkRes.stderr)
 
+console.log('header field validation')
+function httpPluginWithHeaders(id, headers) {
+  const root = path.join(TMP, id)
+  fs.mkdirSync(root, { recursive: true })
+  fs.writeFileSync(path.join(root, 'plugin.json'), JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', name: id }))
+  fs.writeFileSync(
+    path.join(root, 'mcp.json'),
+    JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json', mcpServers: { s: { type: 'streamable-http', url: 'https://example.com/mcp', headers } } })
+  )
+  return jsonExit(run('validate.js', [root, '--json']))
+}
+
+const hOk = httpPluginWithHeaders('hdr-ok', { 'X-Api-Key': 'abc123', 'X-Custom_Flag': 'v1.0+stable', 'Empty-Val': '' })
+assert('valid header names and values accepted', hOk.status === 0 && hOk.data && hOk.data.valid === true, hOk.stderr)
+
+const hBadName = httpPluginWithHeaders('hdr-bad-name', { 'X Bad Name': 'v' })
+assert('invalid header name (space) reported', hBadName.status === 1 && hBadName.data.mcp.errors.some((e) => e.message.includes('valid HTTP field name')), JSON.stringify(hBadName.data && hBadName.data.mcp && hBadName.data.mcp.errors))
+
+const hBadColon = httpPluginWithHeaders('hdr-bad-colon', { 'X-Name:': 'v' })
+assert('invalid header name (colon) reported', hBadColon.status === 1 && hBadColon.data.mcp.errors.some((e) => e.message.includes('valid HTTP field name')))
+
+const hBadValue = httpPluginWithHeaders('hdr-bad-value', { 'X-Key': 'line1\nline2' })
+assert('header value with control character reported', hBadValue.status === 1 && hBadValue.data.mcp.errors.some((e) => e.message.includes('valid HTTP field value')))
+
+const hLeadingWs = httpPluginWithHeaders('hdr-lead-ws', { 'X-Key': ' padded' })
+assert('header value with leading whitespace reported', hLeadingWs.status === 1 && hLeadingWs.data.mcp.errors.some((e) => e.message.includes('valid HTTP field value')))
+
+const hCaseDup = httpPluginWithHeaders('hdr-dup-case', { 'X-Key': 'a', 'x-key': 'b' })
+assert('duplicate header under different casing reported', hCaseDup.status === 1 && hCaseDup.data.mcp.errors.some((e) => e.message.includes('duplicate header name')))
+
 console.log('frontmatter')
 const fmRoot = path.join(TMP, 'fm-plugin')
 fs.mkdirSync(path.join(fmRoot, 'skills/demo'), { recursive: true })
