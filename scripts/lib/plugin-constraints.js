@@ -133,18 +133,17 @@ function validateManifestObject(manifest) {
 
 function validateMcpUrl(url) {
   if (typeof url !== 'string' || url.length === 0) return ['url must be a non-empty string']
-  const placeholderRe = /\$\{[A-Z0-9_]+\}/g
-  const placeholders = new Set(url.match(placeholderRe) || [])
-  for (const ph of placeholders) {
-    if (ph !== '${PLUGIN_ROOT}' && ph !== '${PLUGIN_DATA}') {
-      return [`url contains unknown placeholder ${ph}; only \${PLUGIN_ROOT} and \${PLUGIN_DATA} are permitted`]
-    }
+  // §7.2.1/§9.2: clients never expand placeholders in url — a placeholder in url stays literal
+  // and cannot form a valid absolute URL, so any placeholder-like text is invalid here.
+  const placeholder = /\$\{[^}]*\}/.exec(url)
+  if (placeholder) {
+    return [`url contains placeholder ${placeholder[0]}; clients do not expand placeholders in url (expansion applies only to args, env values, and cwd)`]
   }
   let parsed
   try {
-    parsed = new URL(url.replace(placeholderRe, 'localhost'))
+    parsed = new URL(url)
   } catch {
-    return ['url must be an absolute HTTP or HTTPS URL (with any ${PLUGIN_ROOT}/${PLUGIN_DATA} placeholders resolved)']
+    return ['url must be an absolute HTTP or HTTPS URL']
   }
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     return ['url must use http or https']

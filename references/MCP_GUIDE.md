@@ -37,7 +37,7 @@ Rules:
 | Field | Required | Description |
 |-------|----------|-------------|
 | `type` | Yes | `"streamable-http"` |
-| `url` | Yes | Absolute HTTP(S) URL; no userinfo, no fragment; non-loopback must be HTTPS |
+| `url` | Yes | Absolute HTTP(S) URL; no userinfo, no fragment; non-loopback must be HTTPS; no placeholders — clients never expand `${PLUGIN_ROOT}`/`${PLUGIN_DATA}` in `url` |
 | `headers` | No | object of strings; names must be valid HTTP field names (RFC 9110 token), values must not contain control characters or leading/trailing whitespace, no duplicate names under different casing |
 
 ### sse (legacy HTTP+SSE)

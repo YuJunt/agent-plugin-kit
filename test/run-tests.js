@@ -142,7 +142,7 @@ fs.writeFileSync(
   JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json', mcpServers: { s: { type: 'sse', url: 'http://${FOO}/sse' } } })
 )
 const phRes = jsonExit(run('validate.js', [placeholderRoot, '--json']))
-assert('unknown placeholder in url reported', phRes.status === 1 && phRes.data.mcp.errors.some((e) => e.message.includes('unknown placeholder')))
+assert('unknown placeholder in url reported', phRes.status === 1 && phRes.data.mcp.errors.some((e) => e.message.includes('do not expand placeholders in url')))
 
 const phOkRoot = path.join(TMP, 'ph-ok-plugin')
 fs.mkdirSync(phOkRoot, { recursive: true })
@@ -152,7 +152,7 @@ fs.writeFileSync(
   JSON.stringify({ $schema: 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json', mcpServers: { s: { type: 'sse', url: 'https://${PLUGIN_ROOT}/sse' } } })
 )
 const phOkRes = jsonExit(run('validate.js', [phOkRoot, '--json']))
-assert('valid placeholder in url accepted', phOkRes.status === 0 && phOkRes.data && phOkRes.data.valid === true, phOkRes.stderr)
+assert('PLUGIN_ROOT placeholder in url rejected (clients never expand url)', phOkRes.status === 1 && phOkRes.data.mcp.errors.some((e) => e.message.includes('do not expand placeholders in url')))
 
 console.log('header field validation')
 function httpPluginWithHeaders(id, headers) {
